@@ -1,3 +1,5 @@
 tst.py
 *.out
 *.pyc
+*.png
+*.svg
