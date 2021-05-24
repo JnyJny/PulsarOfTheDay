@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "pulsaroftheday"
+version = "0.1.0"
+description = ""
+authors = ["Your Name <you@example.com>"]
+
+[tool.poetry.scripts]
+potd = "pulsaroftheday.main:cli"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+pandas = "^1.2.4"
+typer = "^0.3.2"
+astropy = "^4.2.1"
+matplotlib = "^3.4.2"
+tweepy = "^3.10.0"
+Wikipedia-API = "^0.5.4"
+loguru = "^0.5.3"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.4"
+black = "^21.5b1"
+pytest-coverage = "^0.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

@@ -1,0 +1,30 @@
+# The New & Improved Pulsar of The Day
+
+## Install
+
+``` console
+$ python3 -m pip install git+https://github.com/JnyJny/PulsarOfTheDay.git
+$ potd --help
+```
+
+## Usage
+
+``` console
+$ potd --help
+$ potd list
+$ potd list --all
+$ potd list --pulsar B0
+```
+
+## Development
+
+```console
+$ python3 -m pip install poetry
+$ git clone https://github.com/JnyJny/PulsarOfTheDay.git
+$ cd PulsarOfTheDay
+$ poetry shell
+<venv> $ poetry install
+...
+<venv> $ potd list
+```
+
