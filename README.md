@@ -13,7 +13,10 @@ $ potd --help
 $ potd --help
 $ potd list
 $ potd list --all
-$ potd list --pulsar B0
+$ potd list --pulsar B0833-45 
+$ potd tweet -n 
+$ potd tweet --pulsar B0833-45  -n
+$ potd tweet 
 ```
 
 ## Development
@@ -28,3 +31,6 @@ $ poetry shell
 <venv> $ potd list
 ```
 
+## Example Output
+
+__Coming Soon__
