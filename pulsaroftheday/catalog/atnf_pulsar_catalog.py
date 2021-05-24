@@ -68,6 +68,15 @@ class ATNFPulsarCatalog:
         self._dataframe["NAME"] = self._dataframe.PSRB.combine_first(
             self._dataframe.PSRJ
         )
+
+        self._dataframe["freq"] = self._dataframe.F0
+        self._dataframe["fdot"] = self._dataframe.F1
+        self._dataframe["period"] = 1 / self._dataframe.freq
+        self._dataframe["pdot"] = (
+            -(1 / self._dataframe.freq ** 2) * self._dataframe.fdot
+        )
+        self._dataframe["color"] = "black"
+
         return self._dataframe
 
     @property

@@ -66,7 +66,7 @@ class Telescope:
 
 
 @dataclass
-class Pulsar:
+class ATNFPulsar:
     NAME: str
     PSRB: str
     PSRJ: str

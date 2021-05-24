@@ -16,6 +16,7 @@ from loguru import logger
 
 from .catalog import ATNFPulsarCatalog as PulsarCatalog
 from .catalog import ATNFPulsar as Pulsar
+from .plots import generate_plot
 
 cli = typer.Typer()
 
@@ -169,20 +170,28 @@ def tweet_subcommand(
 ):
     """Tweet a pulsar record and accompanying plot."""
 
-    df = catalog.dataframe[Pulsar.keys()].dropna()
+    today = datetime.now().isoformat()
+
+    df = catalog.dataframe.dropna(subset=["pdot"])
+
     logger.info(f"Pulsars in catalog matching critera: {len(df)}")
 
+    sample = df.sample(100)
+
     if not pulsar_name:
-        pulsar = Pulsar(*df.sample(1).iloc[0].values)
+        sample.loc[sample.index[0], "color"] = "green"
+        pulsar = Pulsar(*sample[Pulsar.keys()].iloc[0].values)
     else:
         try:
-            pulsar = Pulsar(*df[df.NAME == pulsar_name].iloc[0].values)
+            target = df[df.NAME == pulsar_name]
         except IndexError:
             typer.secho(
                 f"Unable to locate '{pulsar_name}' in the catalog.",
                 fg="red",
             )
             raise typer.Exit() from None
+        sample = target.append(sample)
+        pulsar = Pulsar(*target.iloc[0].values)
 
     if dryrun:
         logger.info(f"DRY RUN for {pulsar.NAME}")
@@ -192,12 +201,13 @@ def tweet_subcommand(
 
     # generate plot here
 
+    generate_plot(sample, f"{today}.png")
+
     if not dryrun:
         logger.info(f"Preparing to tweet {pulsar.NAME}")
 
         # tweet here
 
-        today = datetime.now().isoformat()
         catalog.dataframe.loc[pulsar.NAME, "tweeted"] = today
         logger.info(f"Tweeted {pulsar.NAME} @ {today}")
         catalog.write()
