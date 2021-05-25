@@ -16,11 +16,14 @@ from loguru import logger
 
 from .catalog import ATNFPulsarCatalog as PulsarCatalog
 from .catalog import ATNFPulsar as Pulsar
-from .plots import generate_plot
+from .plots import generate_pdot_skymap_plots
 
 cli = typer.Typer()
 
 catalog = None
+
+app_config_path = Path(typer.get_app_dir("PulsarOfTheDay"))
+app_config_path.mkdir(parents=True, exist_ok=True)
 
 
 def pprint_pulsar(pulsar: Pulsar) -> None:
@@ -54,11 +57,10 @@ def main_command(
         logger.add(sys.stdout, **logger_config)
 
     try:
-        csv_path = Path(
-            path or Path(typer.get_app_dir("PulsarOfTheDay")) / "pulsars.csv"
-        ).resolve()
 
-        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        csv_path = (Path(path or app_config_path) / "pulsars.csv").resolve()
+
+        logger.info(f"Config path: {app_config_path}")
 
         catalog = PulsarCatalog(csv_path)
 
@@ -137,7 +139,6 @@ def list_subcommand(
         return
 
     if all_pulsars:
-        # Only print names since those are common to all entries
         logger.info(f"Listing {len(catalog.dataframe)} Pulsars")
         dump_pulsars(catalog.dataframe)
         return
@@ -165,10 +166,23 @@ def tweet_subcommand(
         help="Do everything but tweet.",
     ),
     pulsar_name: str = typer.Option(
-        None, "--pulsar", "-p", help="Specific pulsar name to tweet."
+        None,
+        "--pulsar",
+        "-p",
+        help="Specific pulsar name to tweet.",
+    ),
+    plots_path: Path = typer.Option(
+        None,
+        "--plots-path",
+        "-P",
+        help="Path to save generated plots.",
     ),
 ):
     """Tweet a pulsar record and accompanying plot."""
+
+    plots_path = Path(plots_path or app_config_path / "plots").resolve()
+
+    plots_path.mkdir(parents=True, exist_ok=True)
 
     today = datetime.now().isoformat()
 
@@ -183,15 +197,19 @@ def tweet_subcommand(
         pulsar = Pulsar(*sample[Pulsar.keys()].iloc[0].values)
     else:
         try:
-            target = df[df.NAME == pulsar_name]
+            target = df[df.CNAME.str.contains(pulsar_name, regex=False)]
+
+            logger.info(f"{pulsar_name} matched {len(target)} records")
+            logger.info(f"{target}")
         except IndexError:
             typer.secho(
                 f"Unable to locate '{pulsar_name}' in the catalog.",
                 fg="red",
             )
             raise typer.Exit() from None
+
+        pulsar = Pulsar(*target.iloc[0][Pulsar.keys()].values)
         sample = target.append(sample)
-        pulsar = Pulsar(*target.iloc[0].values)
 
     if dryrun:
         logger.info(f"DRY RUN for {pulsar.NAME}")
@@ -201,17 +219,31 @@ def tweet_subcommand(
 
     # generate plot here
 
-    generate_plot(sample, f"{today}.png")
+    plotfile = generate_pdot_skymap_plots(sample, plots_path / f"{today}.png")
 
     if not dryrun:
         logger.info(f"Preparing to tweet {pulsar.NAME}")
 
-        # tweet here
+        auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+        auth.set_access_token(access_token, access_token_secret)
 
+        tweeter = tweepy.API(
+            auth,
+            wait_on_rate_limit=True,
+            wait_on_rate_limit_notify=True,
+        )
+        logger.info(f"Tweeting {plotfile} and {str(pulsar)}")
+        try:
+            tweet.update_with_media(filename=plotfile, status=str(pulsar))
+        except Exception as error:
+            logger.error(f"update_with_media failed: {error}")
+            raise typer.Exit()
+        logger.success(f"Tweeted {pulsar.NAME} @ {today}")
+
+        # update the catalog with the date this pulsar was tweeted
         catalog.dataframe.loc[pulsar.NAME, "tweeted"] = today
-        logger.info(f"Tweeted {pulsar.NAME} @ {today}")
         catalog.write()
         logger.info(f"Catalog updated @ {catalog.csv_path}")
     else:
-        logger.info("DRY RUN COMPLETE")
-        typer.secho("DRY RUN COMPLETE", fg="yellow")
+        logger.info(f"DRY RUN COMPLETE: plot @ {plotfile}")
+        typer.secho(f"DRY RUN COMPLETE: plot @ {plotfile}", fg="yellow")

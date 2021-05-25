@@ -69,6 +69,10 @@ class ATNFPulsarCatalog:
             self._dataframe.PSRJ
         )
 
+        self._dataframe["CNAME"] = self._dataframe.PSRB.str.cat(
+            self._dataframe.PSRJ, sep=" ", na_rep="?"
+        )
+
         self._dataframe["freq"] = self._dataframe.F0
         self._dataframe["fdot"] = self._dataframe.F1
         self._dataframe["period"] = 1 / self._dataframe.freq

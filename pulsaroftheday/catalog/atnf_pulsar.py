@@ -144,11 +144,12 @@ class ATNFPulsar:
     def dec(self) -> Angle:
         """Declination (J2000) (+dd:mm:ss)"""
         try:
-            return self._declination
+            return self._dec
         except AttributeError:
             pass
-        self._declination = str_to_angle(self.DECJ)
-        return self._declination
+        logger.debug(f"{type(self.DECJ)} {self.DECJ}")
+        self._dec = str_to_angle(self.DECJ)
+        return self._dec
 
     @property
     def freq(self) -> float:
