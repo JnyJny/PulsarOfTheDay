@@ -25,6 +25,7 @@ $ potd tweet
 $ python3 -m pip install poetry
 $ git clone https://github.com/JnyJny/PulsarOfTheDay.git
 $ cd PulsarOfTheDay
+$ git checkout jnyjny
 $ poetry shell
 <venv> $ poetry install
 ...
