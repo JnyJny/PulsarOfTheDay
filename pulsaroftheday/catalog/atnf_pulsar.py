@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Union
 import numpy as np
 import wikipediaapi as wiki
 
-from astropy import units
+from astropy import units as u
 from astropy.units import Quantity
 from astropy.coordinates import Angle
 from astropy.coordinates import SkyCoord
@@ -20,7 +20,7 @@ from loguru import logger
 
 def str_to_angle(
     value: str,
-    metric: units.Unit = units.deg,
+    metric: u.Unit = u.deg,
 ) -> Angle:
     """Given a J2000 dd:mm:ss string, convert to astropy.coordinates.Angle.
 
@@ -41,7 +41,7 @@ def str_to_angle(
     missing = 3 - len(values)
     if missing:
         values.extend([0.0] * missing)
-    return Angle(tuple(values), units.deg)
+    return Angle(tuple(values), u.deg)
 
 
 class Telescope:
@@ -147,7 +147,6 @@ class ATNFPulsar:
             return self._dec
         except AttributeError:
             pass
-        logger.debug(f"{type(self.DECJ)} {self.DECJ}")
         self._dec = str_to_angle(self.DECJ)
         return self._dec
 
@@ -168,7 +167,7 @@ class ATNFPulsar:
             return self._period
         except AttributeError:
             pass
-        self._period = (1 / self.freq) * units.s
+        self._period = (1 / self.freq) * u.s
         return self._period
 
     @property
@@ -188,7 +187,7 @@ class ATNFPulsar:
             return self._dm
         except AttributeError:
             pass
-        self._dm = self.DM * (units.pc / units.cm ** 3)
+        self._dm = self.DM * (u.pc / u.cm ** 3)
         return self._dm
 
     @property
@@ -198,7 +197,7 @@ class ATNFPulsar:
             return self._char_age
         except AttributeError:
             pass
-        self._char_age = (self.period / (2 * self.pdot)).to(units.yr)
+        self._char_age = (self.period / (2 * self.pdot)).to(u.yr)
         return self._char_age
 
     @property
@@ -220,13 +219,13 @@ class ATNFPulsar:
             # Not sure what it means when pdot is < 0.
             with np.errstate(invalid="raise"):
                 self._b_s *= np.sqrt(self.pdot / LittleMagicNumber)
-                self._b_s *= np.sqrt(self.period / units.s)
+                self._b_s *= np.sqrt(self.period / u.s)
 
         except Exception as error:
             logger.error(f"{self.NAME} {error} pdot={self.pdot} period={self.period}")
             self._b_s = 0
 
-        self._b_s *= units.G
+        self._b_s *= u.G
 
         return self._b_s
 

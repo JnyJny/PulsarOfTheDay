@@ -77,9 +77,10 @@ class ATNFPulsarCatalog:
         self._dataframe["fdot"] = self._dataframe.F1
         self._dataframe["period"] = 1 / self._dataframe.freq
         self._dataframe["pdot"] = (
-            -(1 / self._dataframe.freq ** 2) * self._dataframe.fdot
-        )
-        self._dataframe["color"] = "black"
+            -1 / (self._dataframe.freq ** 2)
+        ) * self._dataframe.fdot
+
+        self._dataframe["color"] = "gray"
 
         return self._dataframe
 

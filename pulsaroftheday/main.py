@@ -26,11 +26,32 @@ app_config_path = Path(typer.get_app_dir("PulsarOfTheDay"))
 app_config_path.mkdir(parents=True, exist_ok=True)
 
 
-def pprint_pulsar(pulsar: Pulsar) -> None:
-    """Pretty print a pulsar to the console."""
-    for n, line in enumerate(str(pulsar).splitlines()):
-        fg = "black" if n else "green"
-        typer.secho(line, fg=fg)
+def log_pulsars(df: pd.DataFrame, dropna: bool = False) -> None:
+    """Log a pulsar to the console."""
+
+    pulsars = df[Pulsar.keys()].copy()
+
+    if dropna:
+        pulsars.dropna(inplace=True)
+
+    for values in pulsars.itertuples(index=False):
+        pulsar = Pulsar(*values)
+        logger.info(f"RECORD B={pulsar.PSRB} J={pulsar.PSRJ}")
+        for n, line in enumerate(str(pulsar).splitlines()):
+            logger.log("PULSAR", line)
+
+
+def dump_pulsars(df: pd.DataFrame, keys: List[str] = None) -> None:
+    """Dumps a CSV formated list of pulsars.
+
+    :param df: pandas.DataFrame
+    :param keys: optional List[str]
+    """
+    keys = keys or df.columns
+    keys.insert(0, "INDEX")
+    print(":".join(keys))
+    for record in df[keys].itertuples(name="Pulsar_Dump"):
+        print(":".join([str(f) for f in record]))
 
 
 @cli.callback()
@@ -44,17 +65,14 @@ def main_command(
 
     global catalog
 
-    if not verbose:
-        logger.disable("pulsaroftheday")
-    else:
-
-        logger.remove()
-        logger_config = {
-            "colorize": True,
-            "format": "<green>{time}</green>|<level>{level:<8}</level>|{message}",
-            "level": {1: "INFO", 2: "DEBUG", 3: "WARN"}.get(verbose, "INFO"),
-        }
-        logger.add(sys.stdout, **logger_config)
+    logger.remove()
+    logger_config = {
+        "colorize": True,
+        "format": "<green>{time}</green>|<level>{level:<8}</level>|{message}",
+        "level": {1: "INFO", 2: "DEBUG"}.get(verbose, "INFO"),
+    }
+    logger.add(sys.stdout, **logger_config)
+    logger.level("PULSAR", no=38, color="<blue>", icon="✪")
 
     try:
 
@@ -64,31 +82,21 @@ def main_command(
 
         catalog = PulsarCatalog(csv_path)
 
-        logger.success(
-            f"initialized catalog dataframe: {len(catalog.dataframe)} entries"
-        )
+        logger.success(f"Pulsars in catalog: {len(catalog.dataframe)}")
+
+        df = catalog.dataframe.dropna(subset=["RAJ", "DECJ", "period", "pdot"])
+
+        logger.success(f"Good pulsar candidates: {len(df)}")
 
         logger.info(f"Catalog data @ {catalog.csv_path.resolve()}")
+
         if not csv_path.exists():
             catalog.write()
             logger.info(f"Wrote CSV data to improve future startup times.")
 
     except Exception as error:
         logger.error(f"{error} on startup")
-        typer.secho(f"{error} on startup", fg="red")
         raise typer.Exit()
-
-
-def dump_pulsars(df: pd.DataFrame, keys: List[str] = None) -> None:
-    """Dumps a CSV formated list of pulsars.
-
-    :param df: pandas.DataFrame
-    :param keys: optional List[str]
-    """
-    keys = keys or df.columns
-    print(":".join(["INDEX"] + keys))
-    for record in df[keys].itertuples(name="Pulsar_Dump"):
-        print(":".join([str(f) for f in record]))
 
 
 @cli.command(name="list")
@@ -102,14 +110,13 @@ def list_subcommand(
         "--all",
         "-a",
         is_flag=True,
-        help="Long listing of all pulsars in the catalog.",
+        help="List all pulsars in the catalog.",
     ),
-    long_format: bool = typer.Option(
+    long_listing: bool = typer.Option(
         False,
-        "--long-format",
+        "--long-fmt",
         "-l",
-        is_flag=True,
-        help="Print pulsar records with long CSV format.",
+        help="List pulsars in CSV format.",
     ),
 ) -> None:
     """List pulsars in the catalog.
@@ -125,9 +132,7 @@ def list_subcommand(
     """
 
     if all_pulsars and pulsar_name:
-        typer.secho(
-            "Error: --all and --pulsar are mutually exclusive options.", fg="red"
-        )
+        logger.error("Mutually exclusive options: --all, --pulsar")
         raise typer.Exit()
 
     if pulsar_name:
@@ -135,7 +140,8 @@ def list_subcommand(
         logger.info(f"Looking up {pulsar_name} in the catalog")
         df = catalog.dataframe[catalog.dataframe.NAME == pulsar_name]
         logger.info(f"Found {len(df)} matching records.")
-        dump_pulsars(df)
+        log_pulsars(df)
+        logger.success("List pulsar by name")
         return
 
     if all_pulsars:
@@ -146,13 +152,18 @@ def list_subcommand(
     # Narrow the catalog to entries with only these keys
     df = catalog.dataframe[Pulsar.keys()].dropna()
 
-    for record in df.itertuples(index=False, name="Pulsar"):
-        try:
-            pulsar = Pulsar(*record)
-            pprint_pulsar(pulsar)
-        except Exception as error:
-            logger.error(f"{error} for record: {record}")
-            raise
+    if long_listing:
+        dump_pulsars(df)
+    else:
+        log_pulsars(df)
+
+    # for record in df.itertuples(index=False, name="Pulsar"):
+    #     try:
+    #         pulsar = Pulsar(*record)
+    #         dump_pulsars(pulsar)
+    #     except Exception as error:
+    #         logger.error(f"{error} for record: {record}")
+    #         raise
 
 
 @cli.command(name="tweet")
@@ -186,9 +197,9 @@ def tweet_subcommand(
 
     today = datetime.now().isoformat()
 
-    df = catalog.dataframe.dropna(subset=["pdot"])
+    df = catalog.dataframe.dropna(subset=["period", "pdot", "DECJ", "RAJ"])
 
-    logger.info(f"Pulsars in catalog matching critera: {len(df)}")
+    logger.info(f"Pulsars matching critera: {len(df)}")
 
     sample = df.sample(100)
 
@@ -196,54 +207,64 @@ def tweet_subcommand(
         sample.loc[sample.index[0], "color"] = "green"
         pulsar = Pulsar(*sample[Pulsar.keys()].iloc[0].values)
     else:
-        try:
-            target = df[df.CNAME.str.contains(pulsar_name, regex=False)]
+        target = df[df.CNAME.str.contains(pulsar_name, regex=False)]
 
-            logger.info(f"{pulsar_name} matched {len(target)} records")
-            logger.info(f"{target}")
-        except IndexError:
-            typer.secho(
-                f"Unable to locate '{pulsar_name}' in the catalog.",
-                fg="red",
-            )
-            raise typer.Exit() from None
+        logger.info(f"{pulsar_name} matched {len(target)} records")
+        if target.empty:
+            logger.error(f"No pulsar matches '{pulsar_name}'")
+            raise typer.Exit()
 
         pulsar = Pulsar(*target.iloc[0][Pulsar.keys()].values)
         sample = target.append(sample)
 
     if dryrun:
         logger.info(f"DRY RUN for {pulsar.NAME}")
-        typer.secho(f"DRY RUN for {pulsar.NAME}", fg="yellow")
 
-    pprint_pulsar(pulsar)
+    log_pulsars(sample.head(1))
 
-    # generate plot here
+    plotfile = (plots_path / f"{today}.png").resolve()
 
-    plotfile = generate_pdot_skymap_plots(sample, plots_path / f"{today}.png")
+    generate_pdot_skymap_plots(sample, plotfile)
 
-    if not dryrun:
-        logger.info(f"Preparing to tweet {pulsar.NAME}")
+    logger.success(f"Plot @ {plotfile}")
 
+    if dryrun:
+        logger.info("DRY RUN COMPLETE, nothing tweeted.")
+        return
+
+    logger.info(f"Preparing to tweet {pulsar.NAME}")
+
+    try:
         auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+    except Exception as error:
+        logger.error(f"OAuthHandler {error}")
+        raise
+    try:
         auth.set_access_token(access_token, access_token_secret)
+    except Exception as error:
+        logger.error(f"set_access_token: {error}")
+        raise
 
+    try:
         tweeter = tweepy.API(
             auth,
             wait_on_rate_limit=True,
             wait_on_rate_limit_notify=True,
         )
-        logger.info(f"Tweeting {plotfile} and {str(pulsar)}")
-        try:
-            tweet.update_with_media(filename=plotfile, status=str(pulsar))
-        except Exception as error:
-            logger.error(f"update_with_media failed: {error}")
-            raise typer.Exit()
-        logger.success(f"Tweeted {pulsar.NAME} @ {today}")
+    except Exception as error:
+        logger.error(f"teepy.API {error}")
 
-        # update the catalog with the date this pulsar was tweeted
-        catalog.dataframe.loc[pulsar.NAME, "tweeted"] = today
-        catalog.write()
-        logger.info(f"Catalog updated @ {catalog.csv_path}")
-    else:
-        logger.info(f"DRY RUN COMPLETE: plot @ {plotfile}")
-        typer.secho(f"DRY RUN COMPLETE: plot @ {plotfile}", fg="yellow")
+    logger.info(f"Tweeting {pulsar.NAME} and {plotfile}")
+
+    try:
+        tweet.update_with_media(filename=plotfile, status=str(pulsar))
+    except Exception as error:
+        logger.error(f"update_with_media failed: {error}")
+        raise typer.Exit()
+
+    # update the catalog with the date this pulsar was tweeted
+    catalog.dataframe.loc[pulsar.NAME, "tweeted"] = today
+    catalog.write()
+    logger.debug(f"Catalog updated @ {catalog.csv_path}")
+
+    logger.success(f"Tweeted {pulsar.NAME} @ {today}")
