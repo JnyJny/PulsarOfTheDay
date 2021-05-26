@@ -34,4 +34,9 @@ $ poetry shell
 
 ## Example Output
 
+![J1846-0749](https://github.com/JnyJny/PulsarOfTheDay/blob/c1e596bfeceafa78a5ce57a510c82f942abcd474/example/2021-05-25T20:37:23.543529.png)
+
+![CLI Screenshot](https://github.com/JnyJny/PulsarOfTheDay/blob/5343e883693d728d8b97b1cb2fdc63cee7dd6330/example/screenshot.png)
 __Coming Soon__
+
+[example_png]: https://github.com/JnyJny/PulsarOfTheDay/blob/c1e596bfeceafa78a5ce57a510c82f942abcd474/example/2021-05-25T20:37:23.543529.png
