@@ -1,5 +1,4 @@
-# The New & Improved Pulsar of The Day
-
+# The Pulsar of The Day Twitter Bot
 
 This repository houses the code for the [Twitter bot][0] of the same
 name. It's designed to randomly pick a pulsar from the [ATNF pulsar
@@ -100,11 +99,10 @@ $ poetry shell
 
 ## Example Output
 
-![J1846-0749](https://github.com/JnyJny/PulsarOfTheDay/blob/66534e05ba3bc54613f76451bf534646a0788f5a/example/2021-05-25T20:37:23.543529.png)
-
-![CLI Screenshot](https://github.com/JnyJny/PulsarOfTheDay/blob/5343e883693d728d8b97b1cb2fdc63cee7dd6330/example/screenshot.png)
-
-[example_png]: https://github.com/JnyJny/PulsarOfTheDay/blob/c1e596bfeceafa78a5ce57a510c82f942abcd474/example/2021-05-25T20:37:23.543529.png
+![J1846-0749][PLOT]
+![CLI Screenshot][SCREENSHOT]
 
 [0]: https://twitter.com/PulsarOfTheDay
 [1]: https://www.atnf.csiro.au/research/pulsar/psrcat/
+[PLOT]: https://github.com/JnyJny/PulsarOfTheDay/blob/66534e05ba3bc54613f76451bf534646a0788f5a/example/2021-05-25T20:37:23.543529.png
+[SCREENSHOT]: https://github.com/JnyJny/PulsarOfTheDay/blob/5343e883693d728d8b97b1cb2fdc63cee7dd6330/example/screenshot.png
