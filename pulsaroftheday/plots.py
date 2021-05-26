@@ -69,12 +69,42 @@ def generate_pdot_plot(
     ax.legend()
 
 
+def fix_angle(text: str, dms: bool = True) -> str:
+
+    fields = text.split(":")
+
+    angle_spec = "{}d{}m{}s" if dms else "{}h{}m{}s"
+
+    try:
+        return angle_spec.format(*fields)
+    except IndexError:
+        pass
+
+    return angle_spec[:-3].format(*fields)
+
+
 def generate_skymap_plot(df: pd.DataFrame, ax) -> None:
+    """"""
 
-    df["l"] = SkyCoord(ra=df.RAJ, dec=df.DECJ, unit=u.deg, frame="icrs").galactic.l
-    df["b"] = SkyCoord(ra=df.RAJ, dec=df.DECJ, unit=u.deg, frame="icrs").galactic.b
+    l = []
+    b = []
 
-    df.plot.scatter(x="l", y="b", grid=True, c="color", ax=ax)
+    for values in df.itertuples():
+        c = SkyCoord(
+            ra=fix_angle(values.RAJ, dms=False),
+            dec=fix_angle(values.DECJ),
+            unit=(units.hourangle, units.deg),
+            frame="icrs",
+        ).galactic
+
+        l.append(c.l.wrap_at(180 * u.deg).radian)
+        b.append(c.b.radian)
+
+    colors = df.color.values.tolist()
+
+    ax.scatter(l[1:], b[1:], c=colors[1:], marker=".")
+    ax.scatter(l[0:1], b[0:1], c=colors[0], marker="o")
+    ax.grid()
 
 
 def generate_pdot_skymap_plots(

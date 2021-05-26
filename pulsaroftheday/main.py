@@ -201,21 +201,23 @@ def tweet_subcommand(
 
     logger.info(f"Pulsars matching critera: {len(df)}")
 
-    sample = df.sample(100)
+    sample = df.sample(len(df))  # random shuffle
 
     if not pulsar_name:
-        sample.loc[sample.index[0], "color"] = "green"
         pulsar = Pulsar(*sample[Pulsar.keys()].iloc[0].values)
     else:
-        target = df[df.CNAME.str.contains(pulsar_name, regex=False)]
+        target = sample[df.CNAME.str.contains(pulsar_name, regex=False)]
 
         logger.info(f"{pulsar_name} matched {len(target)} records")
+
         if target.empty:
             logger.error(f"No pulsar matches '{pulsar_name}'")
             raise typer.Exit()
 
         pulsar = Pulsar(*target.iloc[0][Pulsar.keys()].values)
-        sample = target.append(sample)
+        sample = target.append(sample).drop_duplicates()
+
+    sample.loc[sample.index[0], "color"] = "red"
 
     if dryrun:
         logger.info(f"DRY RUN for {pulsar.NAME}")
