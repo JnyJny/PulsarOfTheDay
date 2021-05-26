@@ -132,5 +132,4 @@ $ poetry shell
 
 [0]: https://twitter.com/PulsarOfTheDay
 [1]: https://www.atnf.csiro.au/research/pulsar/psrcat/
-[PLOT]: https://github.com/JnyJny/PulsarOfTheDay/blob/66534e05ba3bc54613f76451bf534646a0788f5a/example/2021-05-26.png
-
+[PLOT]: https://github.com/JnyJny/PulsarOfTheDay/blob/f2a56492cce8219233eb3338d27b92c7930fbf40/example/2021-05-26.png
