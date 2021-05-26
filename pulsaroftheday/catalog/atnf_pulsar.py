@@ -3,12 +3,13 @@
 
 import importlib.resources as ir
 
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from pathlib import Path
 
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, Generator, List, Union
 
 import numpy as np
+import pandas as pd
 import wikipediaapi as wiki
 
 from astropy import units as u
@@ -35,12 +36,15 @@ def str_to_angle(
     :param metric: optional units.Unit, defaults to units.deg
     :return: astropy.coordinates.Angle
     """
+
     values = [float(f) for f in value.split(":")]
 
     # XXX Is this substitution right? I don't know :)
+    # EJO this is junk
     missing = 3 - len(values)
     if missing:
         values.extend([0.0] * missing)
+
     return Angle(tuple(values), u.deg)
 
 
@@ -84,24 +88,75 @@ class ATNFPulsar:
     def keys(cls) -> List[str]:
         return list(cls.__dataclass_fields__.keys())
 
+    @classmethod
+    def csv_header(cls, sep: str = ":") -> str:
+        return sep.join(cls.__dataclass_fields__.keys())
+
+    @classmethod
+    def from_dataframe(
+        cls,
+        df: pd.DataFrame,
+    ) -> Generator["ATNFPulsar", None, None]:
+
+        df = df[cls.keys()]
+        for values in df.itertuples(index=False):
+            yield cls(*values)
+
+    def __format__(self, format_spec: str) -> str:
+        """Returns a formatted
+        :param format_spec:  str
+        :return: str
+        """
+
+        if format_spec.lower().endswith("s"):
+            return f"{self.__str__()}:{format_spec}"
+
+        if format_spec.lower().endswith(("t", "tweet")):
+            # format as a tweet
+            lines = []
+            lines.append(f"Pulsar: {self.NAME}")
+            lines.append(f"RA: {self.RAJ}")
+            lines.append(f"Dec: {self.DECJ}")
+            lines.append(f"Period: {self.period}")
+            lines.append(f"Pdot: {self.pdot}")
+            lines.append(f"DM: {self.dm}")
+            lines.append(f"Characteristic Age: {self.char_age}")
+            lines.append(f"Surface magnetic field: {self.b_s}")
+            if self.visible_telescopes:
+                lines.append(f"Visible from {', '.join(self.visible_telescopes)}")
+            if self.wikipedia_url:
+                lines.append(f"Wikipedia: {self.wikipedia_url}")
+
+            return "\n".join(lines)
+
+        if format_spec.lower().endswith(("c", "csv")):
+            try:
+                sep = format_spec.replace("csv", "")[0]
+            except IndexError:
+                sep = ":"
+            return sep.join([str(v) for v in self.as_dict.values()])
+
+        if format_spec.lower().endswith(("l", "long")):
+            raise NotImplementedError("pulsar long format")
+
+        return super().__format__(format_spec)
+
     def __str__(self) -> str:
         """"""
-        lines = []
-        lines.append(f"Pulsar: {self.NAME}")
-        lines.append(f"RA: {self.RAJ}")
-        lines.append(f"Dec: {self.DECJ}")
-        lines.append(f"Period: {self.period}")
-        lines.append(f"Pdot: {self.pdot}")
-        lines.append(f"DM: {self.dm}")
-        lines.append(f"Characteristic Age: {self.char_age}")
-        lines.append(f"Surface magnetic field: {self.b_s}")
+        return "\n".join([f"{k}: {v}" for k, v in self.as_dict.items()])
 
-        if self.visible_telescopes:
-            lines.append(f"Visible from {', '.join(self.visible_telescopes)}")
-        if self.wikipedia_url:
-            lines.append(f"Wikipedia: {self.wikipedia_url}")
+    @property
+    def tweet(self) -> str:
+        try:
+            return self._tweet
+        except AttributeError:
+            pass
+        self._tweet = f"{self:tweet}"
+        return self._tweet
 
-        return "\n".join(lines)
+    @property
+    def as_dict(self) -> Dict[str, str]:
+        return asdict(self)
 
     @property
     def wikipedia_url(self) -> Union[str, None]:
@@ -141,6 +196,14 @@ class ATNFPulsar:
         return self._ra
 
     @property
+    def galactic_lattitude(self) -> float:
+        """ """
+
+    @property
+    def galactic_longitude(self) -> float:
+        """ """
+
+    @property
     def dec(self) -> Angle:
         """Declination (J2000) (+dd:mm:ss)"""
         try:
@@ -162,7 +225,7 @@ class ATNFPulsar:
 
     @property
     def period(self) -> Quantity:
-        """Rotational period, inverse of self.freq."""
+        """Rotational period in seconds, inverse of self.freq."""
         try:
             return self._period
         except AttributeError:
@@ -172,7 +235,7 @@ class ATNFPulsar:
 
     @property
     def pdot(self) -> float:
-        """???"""
+        """First derivative of the period."""
         try:
             return self._pdot
         except AttributeError:
@@ -192,7 +255,7 @@ class ATNFPulsar:
 
     @property
     def char_age(self) -> Quantity:
-        """Characteristic age in X years."""
+        """Characteristic age in years."""
         try:
             return self._char_age
         except AttributeError:
@@ -231,7 +294,7 @@ class ATNFPulsar:
 
     @property
     def visible_telescopes(self) -> List[str]:
-        """List of telescopes where this pulsar is observable."""
+        """List of telescopes which can (potentially) observe this pulsar."""
         try:
             return self._visible_telescopes
         except AttributeError:

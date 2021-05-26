@@ -4,11 +4,13 @@
 import importlib.resources as ir
 
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, Generator, List, Union
 
 import pandas as pd
 
 from loguru import logger
+
+from .atnf_pulsar import ATNFPulsar as Pulsar
 
 
 class ATNFPulsarCatalog:
@@ -57,13 +59,16 @@ class ATNFPulsarCatalog:
 
         try:
             self._dataframe = pd.read_csv(self.csv_path)
-            return self._dataframe
+            if not self._dataframe.empty:
+                return self._dataframe
         except Exception as error:
-            logger.debug(f"{error} {self.csv_path}")
+            logger.debug(f"{error}")
 
         pulsars = self.load_psrcat()
 
         self._dataframe = pd.DataFrame(data=list(pulsars.values()))
+
+        logger.debug(f"Read {len(self._dataframe)} items.")
 
         self._dataframe["NAME"] = self._dataframe.PSRB.combine_first(
             self._dataframe.PSRJ
@@ -82,7 +87,22 @@ class ATNFPulsarCatalog:
 
         self._dataframe["color"] = "lightblue"
 
+        self._dataframe.index.rename("INDEX", inplace=True)
+
         return self._dataframe
+
+    @property
+    def plottable(self) -> pd.DataFrame:
+        """A pandas.DataFrame containing a subset of Pulsars with valid data.
+
+        The dataframe will have values for:
+        NAME, PSRB, PSRJ, RAJ, DECJ, F0, F1, and DM
+
+        The dataframe will retain all the columns.
+        """
+        return self.dataframe[Pulsar.keys()].dropna(
+            subset=["NAME", "RAJ", "DECJ", "F0", "F1"]
+        )
 
     @property
     def default_catalog(self) -> Path:
@@ -95,6 +115,30 @@ class ATNFPulsarCatalog:
         with ir.path("pulsaroftheday.catalog.data", "psrcat.db") as db:
             self._default_catalog = db
         return self._default_catalog
+
+    def initialize(self, force: bool = False) -> None:
+
+        if force:
+            logger.info("Beginning catalog initialization")
+            self.csv_path.unlink(missing_ok=True)
+            logger.success(f"Unlinked {self.csv_path}")
+            del self._dataframe
+            logger.success("Removed existing dataframe")
+            self.dataframe
+            logger.success(f"Dataframe read from {self.default_catalog}")
+            if self.dataframe.empty:
+                logger.error("Re-initialized dataframe is empty!")
+                raise Exception("Need a better empty catalog exception")
+            logger.success(f"Reloaded {len(self.dataframe)} pulsars")
+            self.save()
+            logger.success(f"Wrote cached CSV database to {self.csv_path}")
+            return
+
+        logger.info("Initialize: no action taken when force=False")
+        logger.info("Actions that would be taken:")
+        logger.info(f"- unlink {self.csv_path}")
+        logger.info(f"- delete the existing dataframe from memory.")
+        logger.info(f"- re-read data from {self.default_catalog}")
 
     def load_psrcat(
         self, psrcat_path: Union[str, Path] = None
@@ -136,18 +180,99 @@ class ATNFPulsarCatalog:
                     names.append(value)
                     names.sort()  # B names moved to front
 
+        # XXX
+        # calculate period, pdot, glat, glong, char_age, and whatnot?
+
         return pulsars
 
-    def write(self, path: Union[str, Path] = None) -> None:
-        """Save the contents of `dataframe` to `path`.
+    def random_pulsar_population(
+        self,
+        pop_count: int = 0,
+        include_name: str = None,
+        required_keys: List[str] = None,
+    ) -> pd.DataFrame:
+        """Return a pandas.DataFrame with a random pulsar population.
 
-        If `path` is not specified, the path given when the
-        catalog was created is used.
+        If `pop_count` is zero, returns the entire dataframe in random
+        order.
+
+        If `include_name` is given and found in the dataframe, the
+        record for that pulsar is inserted at the top of the dataframe.
+
+        If `required_keys` are given the catalog dataframe is plottableed
+        to just those keys.
+
+        :param pop_count: int
+        :param include_name: optional str
+        :param required_keys: optional List[str]
+        :return: pandas.DataFrame
+        """
+
+        pop_count = pop_count or len(self.dataframe)
+
+        df = self.dataframe
+
+        if required_keys:
+            df = df[required_keys]
+
+        sample = df.sample(pop_count)
+
+        if include_name:
+            match = df.CNAME.str.contains(include_name, regex=False)
+            logger.info(f"Matched {len(match)} records for {include_name}")
+            if match:
+                sample = match.append(sample).drop_duplicates()
+
+        return sample
+
+    def iter_all_pulsars(self) -> Generator[Pulsar, None, None]:
+        """A generator that yields an ATNFPUlsar for all pulsars in the catalog."""
+        for values in self.dataframe[Pulsar.keys()].itertuples(index=False):
+            yield Pulsar(*values)
+
+    def iter_plottable_pulsars(
+        self,
+    ) -> Generator[Pulsar, None, None]:
+        """A generator that yields an ATNFPulsar for each plottable pulsar in the catalog."""
+        for values in self.plottable.itertuples(index=False):
+            yield Pulsar(*values)
+
+    def by_name(
+        self,
+        name: str,
+        regex: bool = False,
+    ) -> pd.DataFrame:
+        """Returns a DataFrame with records that match `name`.
+
+        :param name: str
+        :param regex: optional bool
+        :return: pandas.DataFrame
+        """
+        return self.dataframe.CNAME.str.contains(name, regex=regex)
+
+    def save(self):
+        """"""
+        self.write_csv(self.csv_path)
+
+    def write_csv(
+        self,
+        path: Union[str, Path] = None,
+        keys: List[str] = None,
+        dropna: bool = False,
+    ) -> None:
+        """Write the contents of `dataframe` to `path` in CSV format.
 
         :param path: Union[str, Path]
+        :param keys: optional List[str]
+        :param dropna: optional bool
         """
-        try:
-            self.dataframe.to_csv(path)
-        except Exception as error:
-            logger.error(f"{error} {path}")
-            raise
+
+        df = self.dataframe[keys] if keys else self.dataframe
+
+        if dropna:
+            df = df.dropna()
+
+        text = df.to_csv(path, index=False, index_label=None)
+
+        if not path:
+            print(text)
