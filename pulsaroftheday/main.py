@@ -195,7 +195,7 @@ def tweet_subcommand(
 
     plots_path.mkdir(parents=True, exist_ok=True)
 
-    today = datetime.now().isoformat()
+    today = datetime.now().isoformat().partition("T")[0]
 
     df = catalog.dataframe.dropna(subset=["period", "pdot", "DECJ", "RAJ"])
 
