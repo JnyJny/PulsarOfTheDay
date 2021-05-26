@@ -86,6 +86,9 @@ def fix_angle(text: str, dms: bool = True) -> str:
 def generate_skymap_plot(df: pd.DataFrame, ax) -> None:
     """"""
 
+    # XXX this is gross but necessary until the galactic lat/long
+    #     can be looked up in the DataFrame instead of computed
+    #     for every plot.
     l = []
     b = []
 
@@ -96,15 +99,16 @@ def generate_skymap_plot(df: pd.DataFrame, ax) -> None:
             unit=(units.hourangle, units.deg),
             frame="icrs",
         ).galactic
-
         l.append(c.l.wrap_at(180 * u.deg).radian)
         b.append(c.b.radian)
 
     colors = df.color.values.tolist()
+    names = df.NAME.values.tolist()
 
     ax.scatter(l[1:], b[1:], c="lightblue", marker=".")
-    ax.scatter(l[0:1], b[0:1], c=colors[0], marker="o")
+    ax.scatter(l[0:1], b[0:1], c=colors[0], marker="o", label=names[0])
     ax.grid()
+    ax.legend()
 
 
 def generate_pdot_skymap_plots(
