@@ -101,7 +101,36 @@ $ poetry shell
 ![J1846-0749][PLOT]
 ![CLI Screenshot][SCREENSHOT]
 
+```console
+[32m2021-05-26T15:59:01.418384-0500[0m|[1mINFO    [0m|Config path: /Users/ejo/Library/Application Support/PulsarOfTheDay
+[32m2021-05-26T15:59:01.452335-0500[0m|[32m[1mSUCCESS [0m|Pulsars in catalog: 2872
+[32m2021-05-26T15:59:01.455921-0500[0m|[32m[1mSUCCESS [0m|Plottable pulsars:  1133
+[32m2021-05-26T15:59:01.456079-0500[0m|[1mINFO    [0m|Catalog data @ /Users/ejo/Library/Application Support/PulsarOfTheDay/pulsars.csv
+[32m2021-05-26T15:59:01.461082-0500[0m|[1mINFO    [0m|Pulsars matching tweeting critera: 1133
+[32m2021-05-26T15:59:01.462164-0500[0m|[1mINFO    [0m|DRY RUN for J1851-0053
+[32m2021-05-26T15:59:01.463260-0500[0m|[1mINFO    [0m|RECORD B=nan J=J1851-0053
+[32m2021-05-26T15:59:01.463352-0500[0m|[34mPULSAR  [0m|NAME: J1851-0053
+[32m2021-05-26T15:59:01.463392-0500[0m|[34mPULSAR  [0m|PSRB: nan
+[32m2021-05-26T15:59:01.463421-0500[0m|[34mPULSAR  [0m|PSRJ: J1851-0053
+[32m2021-05-26T15:59:01.463448-0500[0m|[34mPULSAR  [0m|RAJ: 18:51:03.17
+[32m2021-05-26T15:59:01.463473-0500[0m|[34mPULSAR  [0m|DECJ: -00:53:07.3
+[32m2021-05-26T15:59:01.463496-0500[0m|[34mPULSAR  [0m|F0: 0.70969034698
+[32m2021-05-26T15:59:01.463520-0500[0m|[34mPULSAR  [0m|F1: -4.4e-16
+[32m2021-05-26T15:59:01.463544-0500[0m|[34mPULSAR  [0m|DM: 24.0
+[32m2021-05-26T15:59:01.813751-0500[0m|[34m[1mDEBUG   [0m|No wikipedia page for J1851-0053
+[32m2021-05-26T15:59:01.818610-0500[0m|[32m[1mSUCCESS [0m|Tweet text written to /Users/ejo/Library/Application Support/PulsarOfTheDay/tweets/2021-05-26.text
+[32m2021-05-26T15:59:01.926290-0500[0m|[1mINFO    [0m|Generating p-pdot plot...
+[32m2021-05-26T15:59:01.957226-0500[0m|[34m[1mDEBUG   [0m|J1851-0053 8.736045358381725e-16 1.409065241277942 red
+[32m2021-05-26T15:59:01.958391-0500[0m|[34m[1mDEBUG   [0m|Vela 1.25e-13 0.0893 orange
+[32m2021-05-26T15:59:01.959520-0500[0m|[34m[1mDEBUG   [0m|Crab 4.204e-13 0.0334 green
+[32m2021-05-26T15:59:01.960629-0500[0m|[34m[1mDEBUG   [0m|Geminga 1.097e-13 0.2371 purple
+[32m2021-05-26T15:59:01.968854-0500[0m|[1mINFO    [0m|Generating skymap plot...
+[32m2021-05-26T15:59:04.746698-0500[0m|[32m[1mSUCCESS [0m|Tweet plot written to /Users/ejo/Library/Application Support/PulsarOfTheDay/tweets/2021-05-26.png
+[32m2021-05-26T15:59:04.746828-0500[0m|[1mINFO    [0m|DRY RUN COMPLETE, nothing tweeted.
+```
+
+
 [0]: https://twitter.com/PulsarOfTheDay
 [1]: https://www.atnf.csiro.au/research/pulsar/psrcat/
-[PLOT]: https://github.com/JnyJny/PulsarOfTheDay/blob/66534e05ba3bc54613f76451bf534646a0788f5a/example/2021-05-25T20:37:23.543529.png
-[SCREENSHOT]: https://github.com/JnyJny/PulsarOfTheDay/blob/5343e883693d728d8b97b1cb2fdc63cee7dd6330/example/screenshot.png
+[PLOT]: https://github.com/JnyJny/PulsarOfTheDay/blob/66534e05ba3bc54613f76451bf534646a0788f5a/example/2021-05-26.png
+
