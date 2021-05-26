@@ -3,3 +3,4 @@ tst.py
 *.pyc
 *.png
 *.svg
+.DS_Store
