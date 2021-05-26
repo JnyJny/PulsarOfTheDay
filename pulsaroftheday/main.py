@@ -95,6 +95,7 @@ def init_subcommand(
         help="Force re-initialize pulsar database from source data.",
     ),
 ) -> None:
+    """Initialize the CSV database from the source database file."""
 
     catalog.initialize(force=force)
 
