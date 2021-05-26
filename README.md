@@ -99,9 +99,23 @@ $ poetry shell
 ## Example Output
 
 ![J1846-0749][PLOT]
-![CLI Screenshot][SCREENSHOT]
- 
+
+### Twitter Status Text
+```
+Pulsar: J1756+1822
+RA: 17:56:17.583
+Dec: 18:22:55.3
+Period: 0.7440009397588363 s
+Pdot: 5.131291682816034e-16
+DM: 70.8 pc / cm3
+Characteristic Age: 22972741.144057967 yr
+Surface magnetic field: 617874245635.1315 G
+Visible from Arecibo, CHIME, FAST, GBT, VLA
+```
+
+### Command Output with verbosity turned up.
 ```console
+$ potd -vvv twitter -n
 2021-05-26T15:59:01.418384-0500|INFO    |Config path: /Users/ejo/Library/Application Support/PulsarOfTheDay
 2021-05-26T15:59:01.452335-0500|SUCCESS |Pulsars in catalog: 2872
 2021-05-26T15:59:01.455921-0500|SUCCESS |Plottable pulsars:  1133
