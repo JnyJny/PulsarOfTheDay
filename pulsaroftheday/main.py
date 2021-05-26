@@ -127,7 +127,7 @@ def list_subcommand(
     df = catalog.plottable if plottable else catalog.dataframe
 
     if pulsar_name:
-        df = df[catalog.dataframe.NAME == pulsar_name]
+        df = catalog.by_name(pulsar_name)
 
     if not full_dump:
         df = df[Pulsar.keys()]

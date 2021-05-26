@@ -248,7 +248,7 @@ class ATNFPulsarCatalog:
         :param regex: optional bool
         :return: pandas.DataFrame
         """
-        return self.dataframe.CNAME.str.contains(name, regex=regex)
+        return self.dataframe[self.dataframe.CNAME.str.contains(name, regex=regex)]
 
     def save(self):
         """"""
