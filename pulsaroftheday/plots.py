@@ -102,7 +102,7 @@ def generate_skymap_plot(df: pd.DataFrame, ax) -> None:
 
     colors = df.color.values.tolist()
 
-    ax.scatter(l[1:], b[1:], c=colors[1:], marker=".")
+    ax.scatter(l[1:], b[1:], c="lightblue", marker=".")
     ax.scatter(l[0:1], b[0:1], c=colors[0], marker="o")
     ax.grid()
 
