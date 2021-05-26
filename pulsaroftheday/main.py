@@ -1,6 +1,6 @@
 """
 """
-
+import os
 import sys
 
 from datetime import datetime
@@ -205,12 +205,18 @@ def tweet_subcommand(
     logger.info(f"Preparing to tweet {pulsar.NAME}")
 
     try:
-        auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+        auth = tweepy.OAuthHandler(
+            os.environ.get("API_KEY"),
+            os.environ.get("API_SECRET_KEY"),
+        )
     except Exception as error:
         logger.error(f"OAuthHandler {error}")
         raise
     try:
-        auth.set_access_token(access_token, access_token_secret)
+        auth.set_access_token(
+            os.environ.get("ACCESS_TOKEN"),
+            os.environ.get("ACCESS_TOKEN_SECRET"),
+        )
     except Exception as error:
         logger.error(f"set_access_token: {error}")
         raise
@@ -227,14 +233,14 @@ def tweet_subcommand(
     logger.info(f"Tweeting {pulsar.NAME} and {tweet_plot.name}")
 
     try:
-        tweet.update_with_media(filename=tweet_plot, status=pulsar.tweet)
+        tweeter.update_with_media(filename=tweet_plot, status=pulsar.tweet)
     except Exception as error:
         logger.error(f"update_with_media failed: {error}")
         raise typer.Exit()
 
     # update the catalog with the date this pulsar was tweeted
     catalog.dataframe.loc[pulsar.NAME, "tweeted"] = today
-    catalog.write()
+    catalog.save()
     logger.debug(f"Catalog updated @ {catalog.csv_path}")
 
     logger.success(f"Tweeted {pulsar.NAME} @ {today}")
