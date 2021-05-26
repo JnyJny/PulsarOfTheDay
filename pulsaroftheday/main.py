@@ -203,10 +203,18 @@ def tweet_subcommand(
 
     sample = df.sample(len(df))  # random shuffle
 
-    if not pulsar_name:
-        pulsar = Pulsar(*sample[Pulsar.keys()].iloc[0].values)
-    else:
-        target = sample[df.CNAME.str.contains(pulsar_name, regex=False)]
+    # If the user isn't requesting a particular pulsar by name,
+    # we pick the first pulsar in `sample` as the "target" pulsar.
+    #
+    # When the user wants a particular pulsar, we search for it
+    # and then append `sample` to "target" DataFrame and then
+    # drop duplicates, keeping the first one. This shuffles the
+    # target pulsar to top of the sample DataFrame without a duplicate.
+    # The duplicate would just cause two draws of the pulsar in the
+    # plotting phase, so it's not entirely necessary.
+
+    if pulsar_name:
+        target = df[df.CNAME.str.contains(pulsar_name, regex=False)]
 
         logger.info(f"{pulsar_name} matched {len(target)} records")
 
@@ -214,10 +222,12 @@ def tweet_subcommand(
             logger.error(f"No pulsar matches '{pulsar_name}'")
             raise typer.Exit()
 
-        pulsar = Pulsar(*target.iloc[0][Pulsar.keys()].values)
         sample = target.append(sample).drop_duplicates()
 
+    # The first row in the dataframe is the target
+
     sample.loc[sample.index[0], "color"] = "red"
+    pulsar = Pulsar(*sample.iloc[0][Pulsar.keys()].values)
 
     if dryrun:
         logger.info(f"DRY RUN for {pulsar.NAME}")
