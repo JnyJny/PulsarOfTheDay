@@ -4,3 +4,4 @@ tst.py
 *.png
 *.svg
 .DS_Store
+*.csv
