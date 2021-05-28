@@ -4,13 +4,47 @@
 import importlib.resources as ir
 
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Union
+from typing import Any, Dict, Generator, List, Tuple, Union
 
+import numpy as np
 import pandas as pd
+import wikipediaapi as wiki
 
+from astropy import units as u
+from astropy.coordinates import SkyCoord
 from loguru import logger
 
-from .atnf_pulsar import ATNFPulsar as Pulsar
+
+def fix_angle(text: str, dms: bool = True) -> str:
+
+    fields = text.split(":")
+    angle_spec = "{}d{}m{}s" if dms else "{}h{}m{}s"
+
+    try:
+        return angle_spec.format(*fields)
+    except IndexError:
+        pass
+    try:
+        return angle_spec[:-3].format(*fields)
+    except IndexError:
+        pass
+    return angle_spec[:-6].format(*fields)
+
+
+def galactic_coords(ra: str, dec: str) -> Tuple[float, float]:
+    """Galactic latitude & longitude in radians from RA and DEC."""
+
+    gc = SkyCoord(
+        ra=fix_angle(ra, dms=False),
+        dec=fix_angle(dec),
+        unit=(u.hourangle, u.deg),
+        frame="icrs",
+    ).galactic
+
+    g_lat = gc.l.wrap_at(180 * u.deg).radian
+    g_long = gc.b.radian
+
+    return (g_lat, g_long)
 
 
 class ATNFPulsarCatalog:
@@ -49,6 +83,25 @@ class ATNFPulsarCatalog:
         return "https://www.atnf.csiro.au/research/pulsar/psrcat/"
 
     @property
+    def catalog_keys(self) -> List[str]:
+        return ["NAME", "PSRB", "PSRJ", "RAJ", "DECJ", "F0", "F1"]
+
+    @property
+    def tweetable_keys(self) -> List[str]:
+        return [
+            "NAME",
+            "RAJ",
+            "DECJ",
+            "period",
+            "pdot",
+            "DM",
+            "char_age",
+            "b_s",
+            "g_lat",
+            "g_long",
+        ]
+
+    @property
     def dataframe(self) -> pd.DataFrame:
         """A pandas.DataFrame loaded with pulsar data."""
 
@@ -59,16 +112,11 @@ class ATNFPulsarCatalog:
 
         try:
             self._dataframe = pd.read_csv(self.csv_path)
-            if not self._dataframe.empty:
-                return self._dataframe
         except Exception as error:
             logger.debug(f"{error}")
-
-        pulsars = self.load_psrcat()
-
-        self._dataframe = pd.DataFrame(data=list(pulsars.values()))
-
-        logger.debug(f"Read {len(self._dataframe)} items.")
+            pulsars = self.load_psrcat()
+            self._dataframe = pd.DataFrame(data=list(pulsars.values()))
+            logger.debug(f"Read {len(self._dataframe)} items.")
 
         self._dataframe["NAME"] = self._dataframe.PSRB.combine_first(
             self._dataframe.PSRJ
@@ -85,6 +133,17 @@ class ATNFPulsarCatalog:
             -1 / (self._dataframe.freq ** 2)
         ) * self._dataframe.fdot
 
+        self._dataframe["char_age"] = self._dataframe.period / (
+            2 * self._dataframe.pdot
+        )
+
+        self._dataframe["b_s"] = (
+            1e12
+            * np.sqrt(self._dataframe.pdot / 1e-15)
+            * np.sqrt(self._dataframe.period / u.s)
+            * u.G
+        )
+
         self._dataframe["color"] = "lightblue"
 
         self._dataframe.index.rename("INDEX", inplace=True)
@@ -92,16 +151,17 @@ class ATNFPulsarCatalog:
         return self._dataframe
 
     @property
-    def plottable(self) -> pd.DataFrame:
+    def tweetable(self) -> pd.DataFrame:
         """A pandas.DataFrame containing a subset of Pulsars with valid data.
 
-        The dataframe will have values for:
-        NAME, PSRB, PSRJ, RAJ, DECJ, F0, F1, and DM
+        Valid entries (not NaN) for these keys:
+        - NAME, period, pdot, g_lat, g_long
+
 
         The dataframe will retain all the columns.
         """
-        return self.dataframe[Pulsar.keys()].dropna(
-            subset=["NAME", "RAJ", "DECJ", "F0", "F1"]
+        return self.dataframe.dropna(
+            subset=["NAME", "period", "pdot", "g_lat", "g_long"]
         )
 
     @property
@@ -162,26 +222,38 @@ class ATNFPulsarCatalog:
                 if line.startswith("#"):
                     continue
                 if line.startswith("@-"):
-                    info = pulsars.setdefault(names[0], {})
+                    pulsar = pulsars.setdefault(names[0], {})
                     for attr, value in record:
-                        info.update({attr: value})
+                        pulsar.update({attr: value})
                     record = []
                     names = []
                     continue
+
                 parameter, value, *items = line.split()
 
-                try:
-                    value = float(value)
-                except (ValueError, TypeError):
-                    pass
+                if parameter not in ["DECJ", "RAJ"]:
+                    try:
+                        value = float(value)
+                    except (ValueError, TypeError):
+                        pass
 
                 record.append((parameter, value))
                 if parameter in ["PSRJ", "PSRB"]:
                     names.append(value)
                     names.sort()  # B names moved to front
 
-        # XXX
-        # calculate period, pdot, glat, glong, char_age, and whatnot?
+        wikipedia = wiki.Wikipedia("en")
+
+        for name, pulsar in pulsars.items():
+            try:
+                g_lat, g_long = galactic_coords(
+                    pulsar["RAJ"],
+                    pulsar["DECJ"],
+                )
+                pulsar.setdefault("g_lat", g_lat)
+                pulsar.setdefault("g_long", g_long)
+            except KeyError as error:
+                logger.debug(f"{name} Missing key {error}")
 
         return pulsars
 
@@ -208,9 +280,9 @@ class ATNFPulsarCatalog:
         :return: pandas.DataFrame
         """
 
-        pop_count = pop_count or len(self.dataframe)
+        df = self.tweetable
 
-        df = self.dataframe
+        pop_count = pop_count or len(df)
 
         if required_keys:
             df = df[required_keys]
@@ -225,18 +297,6 @@ class ATNFPulsarCatalog:
 
         return sample
 
-    def iter_all_pulsars(self) -> Generator[Pulsar, None, None]:
-        """A generator that yields an ATNFPUlsar for all pulsars in the catalog."""
-        for values in self.dataframe[Pulsar.keys()].itertuples(index=False):
-            yield Pulsar(*values)
-
-    def iter_plottable_pulsars(
-        self,
-    ) -> Generator[Pulsar, None, None]:
-        """A generator that yields an ATNFPulsar for each plottable pulsar in the catalog."""
-        for values in self.plottable.itertuples(index=False):
-            yield Pulsar(*values)
-
     def by_name(
         self,
         name: str,
@@ -249,6 +309,24 @@ class ATNFPulsarCatalog:
         :return: pandas.DataFrame
         """
         return self.dataframe[self.dataframe.CNAME.str.contains(name, regex=regex)]
+
+    def tweet(self, df: pd.DataFrame) -> Generator[str, None, None]:
+
+        for values in df[self.tweetable_keys].itertuples():
+
+            yield """Pulsar: {NAME}
+RA: {RAJ}
+Dec: {DECJ}
+Period: {period}
+Pdot: {pdot}
+DM: {DM}
+Characteristic Age: {char_age}
+Surface Magnetic Field: {b_s}
+""".format_map(
+                values._asdict()
+            )
+
+            pass
 
     def save(self):
         """"""

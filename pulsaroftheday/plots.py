@@ -14,8 +14,6 @@ from loguru import logger
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 
-from .catalog import ATNFPulsar as Pulsar
-
 well_known_pulsars = pd.DataFrame(
     [
         ["Vela", 0.0893, 1.250 * 10 ** (-13), "orange"],
@@ -69,44 +67,27 @@ def generate_pdot_plot(
     ax.legend()
 
 
-def fix_angle(text: str, dms: bool = True) -> str:
-
-    fields = text.split(":")
-
-    angle_spec = "{}d{}m{}s" if dms else "{}h{}m{}s"
-
-    try:
-        return angle_spec.format(*fields)
-    except IndexError:
-        pass
-
-    return angle_spec[:-3].format(*fields)
-
-
 def generate_skymap_plot(df: pd.DataFrame, ax) -> None:
     """"""
 
-    # XXX this is gross but necessary until the galactic lat/long
-    #     can be looked up in the DataFrame instead of computed
-    #     for every plot.
-    l = []
-    b = []
+    df.tail(-1).plot.scatter(
+        x="g_lat",
+        y="g_long",
+        c="color",
+        marker=".",
+        ax=ax,
+    )
 
-    for values in df.itertuples():
-        c = SkyCoord(
-            ra=fix_angle(values.RAJ, dms=False),
-            dec=fix_angle(values.DECJ),
-            unit=(units.hourangle, units.deg),
-            frame="icrs",
-        ).galactic
-        l.append(c.l.wrap_at(180 * u.deg).radian)
-        b.append(c.b.radian)
+    label = df.NAME[0]
 
-    colors = df.color.values.tolist()
-    names = df.NAME.values.tolist()
-
-    ax.scatter(l[1:], b[1:], c="lightblue", marker=".")
-    ax.scatter(l[0:1], b[0:1], c=colors[0], marker="o", label=names[0])
+    df.head(1).plot.scatter(
+        x="g_lat",
+        y="g_long",
+        c="color",
+        marker="o",
+        label=label,
+        ax=ax,
+    )
     ax.grid()
     ax.legend()
 

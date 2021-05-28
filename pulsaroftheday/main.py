@@ -15,7 +15,6 @@ import typer
 from loguru import logger
 
 from .catalog import ATNFPulsarCatalog as PulsarCatalog
-from .catalog import ATNFPulsar as Pulsar
 from .plots import generate_pdot_skymap_plots
 
 cli = typer.Typer()
@@ -24,15 +23,6 @@ catalog = None
 
 app_config_path = Path(typer.get_app_dir("PulsarOfTheDay"))
 app_config_path.mkdir(parents=True, exist_ok=True)
-
-
-def log_pulsars(df: pd.DataFrame, dropna: bool = False) -> None:
-    """Log a pulsar to the console."""
-
-    for pulsar in Pulsar.from_dataframe(df):
-        logger.info(f"RECORD B={pulsar.PSRB} J={pulsar.PSRJ}")
-        for n, line in enumerate(str(pulsar).splitlines()):
-            logger.log("PULSAR", line)
 
 
 @cli.callback()
@@ -71,7 +61,7 @@ def main_command(
         catalog = PulsarCatalog(csv_path)
 
         logger.success(f"Pulsars in catalog: {len(catalog.dataframe)}")
-        logger.success(f"Plottable pulsars:  {len(catalog.plottable)}")
+        logger.success(f"Tweet-able pulsars: {len(catalog.tweetable)}")
 
         logger.info(f"Catalog data @ {catalog.csv_path.resolve()}")
 
@@ -109,11 +99,11 @@ def list_subcommand(
         "-n",
         help="Either a B or J name for a given pulsar.",
     ),
-    plottable: bool = typer.Option(
+    tweetable: bool = typer.Option(
         False,
-        "--plottable",
-        "-p",
-        help="List only plottable pulsars.",
+        "--tweetable",
+        "-t",
+        help="List only tweetable pulsars.",
     ),
     full_dump: bool = typer.Option(
         False,
@@ -124,13 +114,10 @@ def list_subcommand(
 ) -> None:
     """List pulsars in the catalog in CSV format."""
 
-    df = catalog.plottable if plottable else catalog.dataframe
+    df = catalog.tweetable if tweetable else catalog.dataframe
 
     if pulsar_name:
         df = catalog.by_name(pulsar_name)
-
-    if not full_dump:
-        df = df[Pulsar.keys()]
 
     print(df.to_csv(index=True, index_label="INDEX"))
 
@@ -168,29 +155,34 @@ def tweet_subcommand(
 
     sample = catalog.random_pulsar_population(include_name=pulsar_name)
 
-    sample = sample.dropna(subset=["NAME", "DECJ", "RAJ", "period", "pdot"])
+    sample = sample.dropna(subset=["g_lat", "g_long"])
 
     logger.info(f"Pulsars matching tweeting critera: {len(sample)}")
 
     # The first row in the dataframe is the target
+    # which will be plotted in red.
 
-    sample.loc[sample.index[0], "color"] = "red"
+    pulsar = sample.head(1)
 
-    pulsar = Pulsar(*sample.iloc[0][Pulsar.keys()].values)
+    sample.loc[pulsar.index, "color"] = "red"
 
     if dryrun:
-        logger.info(f"DRY RUN for {pulsar.NAME}")
+        logger.info(f"DRY RUN for {sample.NAME.values[0]}")
 
-    log_pulsars(sample.head(1))
+    tweet_path = tweets_path / f"{today}.text"
 
-    tweet_text = tweets_path / f"{today}.text"
+    tweet = list(catalog.tweet(pulsar))[0]
+
+    for line in tweet.splitlines():
+        logger.log("PULSAR", line)
 
     try:
-        print(f"{pulsar:tweet}", file=tweet_text.open("w"))
+        tweet_path.write_text(tweet)
     except Exception as error:
-        logger.error("{error} writing tweet to {tweet_text}")
+        logger.error("f{error} writing tweet to {tweet_path}")
         raise typer.Exit()
-    logger.success(f"Tweet text written to {tweet_text}")
+
+    logger.success(f"Tweet text written to {tweet_path}")
 
     tweet_plot = (tweets_path / f"{today}.png").resolve()
 
@@ -199,10 +191,28 @@ def tweet_subcommand(
     logger.success(f"Tweet plot written to {tweet_plot}")
 
     if dryrun:
+        sample.loc[0, "tweeted"] = today
+        catalog.save()
+        logger.info(f"Catalog updated @ {catalog.csv_path}")
         logger.info("DRY RUN COMPLETE, nothing tweeted.")
         return
 
     logger.info(f"Preparing to tweet {pulsar.NAME}")
+
+    logger.info(f"Checking for twitter credentials...")
+    try:
+        for envvar in [
+            "API_KEY",
+            "API_SECRET_KEY",
+            "ACCESS_TOKEN",
+            "ACCESS_TOKEN_SECRET",
+        ]:
+            os.environ[envvar]
+    except Exception as error:
+        logger.error("{error}")
+        raise typer.Exit() from None
+
+    logger.success("Twitter credentials are available.")
 
     try:
         auth = tweepy.OAuthHandler(
@@ -211,7 +221,8 @@ def tweet_subcommand(
         )
     except Exception as error:
         logger.error(f"OAuthHandler {error}")
-        raise
+        raise typer.Exit() from None
+
     try:
         auth.set_access_token(
             os.environ.get("ACCESS_TOKEN"),
@@ -219,7 +230,7 @@ def tweet_subcommand(
         )
     except Exception as error:
         logger.error(f"set_access_token: {error}")
-        raise
+        raise typer.Exit() from None
 
     try:
         tweeter = tweepy.API(
@@ -229,6 +240,7 @@ def tweet_subcommand(
         )
     except Exception as error:
         logger.error(f"teepy.API {error}")
+        raise typer.Exit() from None
 
     logger.info(f"Tweeting {pulsar.NAME} and {tweet_plot.name}")
 
@@ -239,7 +251,7 @@ def tweet_subcommand(
         raise typer.Exit()
 
     # update the catalog with the date this pulsar was tweeted
-    catalog.dataframe.loc[pulsar.NAME, "tweeted"] = today
+    sample.loc[0, "tweeted"] = today
     catalog.save()
     logger.debug(f"Catalog updated @ {catalog.csv_path}")
 
