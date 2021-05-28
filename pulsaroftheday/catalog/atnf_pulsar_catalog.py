@@ -14,6 +14,8 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord
 from loguru import logger
 
+from .telescope import Telescope
+
 
 def fix_angle(text: str, dms: bool = True) -> str:
 
@@ -176,6 +178,18 @@ class ATNFPulsarCatalog:
             self._default_catalog = db
         return self._default_catalog
 
+    @property
+    def wikipedia(self) -> wiki.Wikipedia:
+        """"""
+        try:
+            return self._wikipedia
+        except AttributeError:
+            pass
+
+        self._wikipedia = wiki.Wikipedia("en")
+
+        return self._wikipedia
+
     def initialize(self, force: bool = False) -> None:
 
         if force:
@@ -241,8 +255,6 @@ class ATNFPulsarCatalog:
                 if parameter in ["PSRJ", "PSRB"]:
                     names.append(value)
                     names.sort()  # B names moved to front
-
-        wikipedia = wiki.Wikipedia("en")
 
         for name, pulsar in pulsars.items():
             try:
@@ -312,21 +324,34 @@ class ATNFPulsarCatalog:
 
     def tweet(self, df: pd.DataFrame) -> Generator[str, None, None]:
 
-        for values in df[self.tweetable_keys].itertuples():
+        for t in df[self.tweetable_keys].itertuples():
+            values = t._asdict()
 
-            yield """Pulsar: {NAME}
-RA: {RAJ}
-Dec: {DECJ}
-Period: {period}
-Pdot: {pdot}
-DM: {DM}
-Characteristic Age: {char_age}
-Surface Magnetic Field: {b_s}
-""".format_map(
-                values._asdict()
-            )
+            lines = [
+                "Pulsar: {NAME}",
+                "RA: {RAJ}",
+                "Dec: {DECJ}",
+                "Period: {period}",
+                "Pdot: {pdot}",
+                "DM: {DM}",
+                "Characteristic Age: {char_age}",
+                "Surface Magnetic Field: {b_s}",
+            ]
 
-            pass
+            for name in ["PSRJ", "PSRB"]:
+                try:
+                    page = self.wikipedia.page(f"PSR_{values[name]}")
+                except KeyError:
+                    continue
+                if page.exists():
+                    lines.append(f"Wikipedia URL: {page.canonicalurl}")
+                    break
+
+            visible_to = Telescope.observable_from(values["DECJ"])
+            if visible_to:
+                lines.append(f"Visible from {', '.join(visible_to)}")
+
+            yield "\n".join(lines).format_map(values)
 
     def save(self):
         """"""

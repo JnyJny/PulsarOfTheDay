@@ -1,8 +1,9 @@
 """
 """
 
-from typing import Union
+from typing import List, Union
 
+from astropy import units as u
 from astropy.coordinates import Angle
 
 
@@ -45,6 +46,11 @@ class Telescope:
             cls("GBT", "-46:00:00", "90:00:00"),
             cls("VLA", "-44:00:00", "90:00:00"),
         ]
+
+    @classmethod
+    def observable_from(cls, declination: Union[Angle, str]) -> List[str]:
+        """"""
+        return [t.name for t in cls.telescopes() if t.can_see(declination)]
 
     def __init__(self, name: str, dec_lower: str, dec_upper: str) -> None:
         self.name = name
