@@ -324,34 +324,34 @@ class ATNFPulsarCatalog:
 
     def tweet(self, df: pd.DataFrame) -> Generator[str, None, None]:
 
-        for t in df[self.tweetable_keys].itertuples():
-            values = t._asdict()
+        for p in df[self.tweetable_keys].itertuples():
 
             lines = [
-                "Pulsar: {NAME}",
-                "RA: {RAJ}",
-                "Dec: {DECJ}",
-                "Period: {period}",
-                "Pdot: {pdot}",
-                "DM: {DM}",
-                "Characteristic Age: {char_age}",
-                "Surface Magnetic Field: {b_s}",
+                f"Pulsar: {p.NAME}",
+                f"RA: {p.RAJ}",
+                f"Dec: {p.DECJ}",
+                f"Period: {round(p.period, 3)} s",
+                f"Pdot: {p.pdot:.3e}",
+                f"DM: {p.DM}",
+                f"Characteristic Age: {p.char_age:.3e} yr",
+                f"Surface Magnetic Field: {p.b_s:.3e} G",
             ]
 
-            for name in ["PSRJ", "PSRB"]:
+            for key in ["PSRJ", "PSRB"]:
                 try:
-                    page = self.wikipedia.page(f"PSR_{values[name]}")
-                except KeyError:
+                    name = getattr(p, key)
+                    page = self.wikipedia.page(f"PSR_{name}")
+                except (KeyError, AttributeError):
                     continue
                 if page.exists():
                     lines.append(f"Wikipedia URL: {page.canonicalurl}")
                     break
 
-            visible_to = Telescope.observable_from(values["DECJ"])
+            visible_to = Telescope.observable_from(p.DECJ)
             if visible_to:
                 lines.append(f"Visible from {', '.join(visible_to)}")
 
-            yield "\n".join(lines).format_map(values)
+            yield "\n".join(lines)
 
     def save(self):
         """"""
