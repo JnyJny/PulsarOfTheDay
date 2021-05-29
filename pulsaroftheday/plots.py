@@ -2,7 +2,7 @@
 """
 
 from pathlib import Path
-from typing import Tuple, Union
+from typing import List, Tuple, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,6 +13,8 @@ from loguru import logger
 
 from astropy import units as u
 from astropy.coordinates import SkyCoord
+from PIL import Image
+from PIL.ImageDraw import ImageDraw
 
 well_known_pulsars = pd.DataFrame(
     [
@@ -22,6 +24,36 @@ well_known_pulsars = pd.DataFrame(
     ],
     columns=["NAME", "period", "pdot", "color"],
 )
+
+
+def pulse_animation(
+    filename: Union[str, Path],
+    period: float,
+    size: Tuple[int, int] = None,
+    nframes: int = 9,
+) -> None:
+
+    size = size or (100, 100)
+
+    duration = period / nframes
+
+    colors = np.linspace(0, 255, int(nframes / 2) + 1, dtype=int).tolist()
+
+    colors.extend(reversed(colors[:-1]))
+
+    frames = []
+    for color in colors:
+        frames.append(Image.new("RGBA", size))
+        ImageDraw(frames[-1]).ellipse([0, 0, *size], fill=(color, 0, 0, 255), width=0)
+
+    frames[0].save(
+        filename,
+        format="GIF",
+        append_images=frames[1:],
+        save_all=True,
+        duration=duration,
+        loop=0,
+    )
 
 
 def generate_pdot_plot(
@@ -89,6 +121,8 @@ def generate_skymap_plot(df: pd.DataFrame, ax) -> None:
         ax=ax,
     )
     ax.grid()
+    ax.set_xlabel("")
+    ax.set_ylabel("")
     ax.legend()
 
 

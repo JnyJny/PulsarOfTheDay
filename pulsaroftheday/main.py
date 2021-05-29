@@ -15,7 +15,7 @@ import typer
 from loguru import logger
 
 from .catalog import ATNFPulsarCatalog as PulsarCatalog
-from .plots import generate_pdot_skymap_plots
+from .plots import generate_pdot_skymap_plots, pulse_animation
 
 cli = typer.Typer()
 
@@ -190,6 +190,12 @@ def tweet_subcommand(
 
     logger.success(f"Tweet plot written to {tweet_plot}")
 
+    tweet_animation = (tweets_path / f"{today}.gif").resolve()
+
+    pulse_animation(tweet_animation, pulsar.period.values[0])
+
+    logger.success(f"Tweet animation written to {tweet_animation}")
+
     if dryrun:
         sample.loc[0, "tweeted"] = today
         catalog.save()
@@ -209,7 +215,7 @@ def tweet_subcommand(
         ]:
             os.environ[envvar]
     except Exception as error:
-        logger.error("{error}")
+        logger.error(f"{error}")
         raise typer.Exit() from None
 
     logger.success("Twitter credentials are available.")
