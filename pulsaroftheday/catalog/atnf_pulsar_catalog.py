@@ -332,7 +332,7 @@ class ATNFPulsarCatalog:
                 f"Dec: {p.DECJ}",
                 f"Period: {round(p.period, 3)} s",
                 f"Pdot: {p.pdot:.3e}",
-                f"DM: {p.DM}",
+                f"DM: {p.DM} pc/cm^3",
                 f"Characteristic Age: {p.char_age:.3e} yr",
                 f"Surface Magnetic Field: {p.b_s:.3e} G",
             ]
