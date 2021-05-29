@@ -16,6 +16,7 @@ matplotlib = "^3.4.2"
 tweepy = "^3.10.0"
 Wikipedia-API = "^0.5.4"
 loguru = "^0.5.3"
+Pillow = "^8.2.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^6.2.4"

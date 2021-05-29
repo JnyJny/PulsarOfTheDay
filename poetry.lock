@@ -507,7 +507,7 @@ dev = ["pytest (>=4.6.2)", "black (>=19.3b0)"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "b7fcc1b9af034101a24a2d6d39212d4ed920e074392965fe944e5da29fb1007a"
+content-hash = "07b3350e8c08b912cddd75b974ae9239cf437ef3003b768c29a97ae426606639"
 
 [metadata.files]
 appdirs = [
