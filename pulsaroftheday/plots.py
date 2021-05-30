@@ -13,8 +13,9 @@ from loguru import logger
 
 from astropy import units as u
 from astropy.coordinates import SkyCoord
-from PIL import Image
-from PIL.ImageDraw import ImageDraw
+
+from . import animate
+
 
 well_known_pulsars = pd.DataFrame(
     [
@@ -26,36 +27,6 @@ well_known_pulsars = pd.DataFrame(
 )
 
 
-def pulse_animation(
-    filename: Union[str, Path],
-    period: float,
-    size: Tuple[int, int] = None,
-    nframes: int = 9,
-) -> None:
-
-    size = size or (100, 100)
-
-    duration = period / nframes
-
-    colors = np.linspace(0, 255, int(nframes / 2) + 1, dtype=int).tolist()
-
-    colors.extend(reversed(colors[:-1]))
-
-    frames = []
-    for color in colors:
-        frames.append(Image.new("RGBA", size))
-        ImageDraw(frames[-1]).ellipse([0, 0, *size], fill=(color, 0, 0, 255), width=0)
-
-    frames[0].save(
-        filename,
-        format="GIF",
-        append_images=frames[1:],
-        save_all=True,
-        duration=duration,
-        loop=0,
-    )
-
-
 def generate_pdot_plot(
     df: pd.DataFrame,
     ax,
@@ -63,6 +34,10 @@ def generate_pdot_plot(
 ) -> None:
 
     named_pulsars = df.head(1).copy()
+
+    # xy = named_pulsars.period.values[0], named_pulsars.pdot.values[0]
+    # coord = [int(v) for v in ax.transData.transform(xy)]
+    # logger.debug(f"p/pdot {xy} -> {coord}")
 
     if include_well_known_pulsars:
         named_pulsars = named_pulsars.append(well_known_pulsars)
@@ -112,6 +87,10 @@ def generate_skymap_plot(df: pd.DataFrame, ax) -> None:
 
     label = df.NAME[0]
 
+    # xy = df.g_lat.values[0], df.g_long.values[0]
+    # coord = [int(v) for v in ax.transData.transform(xy)]
+    # logger.debug(f"skymap {xy} -> {coord}")
+
     df.head(1).plot.scatter(
         x="g_lat",
         y="g_long",
@@ -120,6 +99,7 @@ def generate_skymap_plot(df: pd.DataFrame, ax) -> None:
         label=label,
         ax=ax,
     )
+
     ax.grid()
     ax.set_xlabel("")
     ax.set_ylabel("")
@@ -131,6 +111,7 @@ def generate_pdot_skymap_plots(
     path: Union[str, Path],
     include_well_known_pulsars: bool = True,
     figsize: Tuple[float, float] = None,
+    animated: bool = True,
 ) -> None:
     """"""
 
@@ -144,6 +125,7 @@ def generate_pdot_skymap_plots(
     df.loc[df.index[0], "color"] = "red"
 
     logger.info(f"Generating p-pdot plot...")
+
     generate_pdot_plot(df, pdot_ax, include_well_known_pulsars)
 
     logger.info(f"Generating skymap plot...")
@@ -151,3 +133,13 @@ def generate_pdot_skymap_plots(
 
     plt.gcf().set_size_inches(figsize)
     plt.savefig(path)
+
+    pdot_xy = df[["period", "pdot"]].values[0].tolist()
+    coords = []
+    coords.append([int(v) for v in pdot_ax.transData.transform(pdot_xy)])
+
+    gall_xy = df[["g_lat", "g_long"]].values[0].tolist()
+    coords.append([int(v) for v in sky_ax.transData.transform(gall_xy)])
+
+    if animated:
+        animate.add_pulsar(path, df.head(1).period.values[0], origins=coords)

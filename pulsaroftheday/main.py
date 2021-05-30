@@ -15,7 +15,7 @@ import typer
 from loguru import logger
 
 from .catalog import ATNFPulsarCatalog as PulsarCatalog
-from .plots import generate_pdot_skymap_plots, pulse_animation
+from .plots import generate_pdot_skymap_plots
 
 cli = typer.Typer()
 
@@ -189,12 +189,6 @@ def tweet_subcommand(
     generate_pdot_skymap_plots(sample, tweet_plot)
 
     logger.success(f"Tweet plot written to {tweet_plot}")
-
-    tweet_animation = (tweets_path / f"{today}.gif").resolve()
-
-    pulse_animation(tweet_animation, pulsar.period.values[0])
-
-    logger.success(f"Tweet animation written to {tweet_animation}")
 
     if dryrun:
         sample.loc[0, "tweeted"] = today
