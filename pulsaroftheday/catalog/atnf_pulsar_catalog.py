@@ -302,9 +302,9 @@ class ATNFPulsarCatalog:
         sample = df.sample(pop_count)
 
         if include_name:
-            match = df.CNAME.str.contains(include_name, regex=False)
+            match = df[df.CNAME.str.contains(include_name, regex=False)]
             logger.info(f"Matched {len(match)} records for {include_name}")
-            if match:
+            if not match.empty:
                 sample = match.append(sample).drop_duplicates()
 
         return sample
