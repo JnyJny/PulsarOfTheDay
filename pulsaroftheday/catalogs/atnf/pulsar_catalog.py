@@ -2,6 +2,7 @@
 """
 
 import importlib.resources as ir
+import warnings
 
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Tuple, Union
@@ -140,18 +141,16 @@ class PulsarCatalog:
             2 * self._dataframe.pdot
         )
 
-        # np.seterr(all="raise")
-        try:
+        with warnings.catch_warnings():
+            # The sqrts are generating RuntimeWarnings that we suppress.
+            # My guess is it's a sub-epsilon problem but my research has
+            # been inconclusive.
             self._dataframe["b_s"] = (
                 1e12
                 * np.sqrt(self._dataframe.pdot / 1e-15)
                 * np.sqrt(self._dataframe.period / u.s)
                 * u.G
             )
-        except Exception as error:
-            logger.debug(f"B_S {error}")
-
-        # np.seterr(all="ignore")
 
         self._dataframe["color"] = "lightblue"
         self._dataframe["tweeted"] = np.NaN
