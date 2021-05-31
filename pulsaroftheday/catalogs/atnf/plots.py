@@ -85,7 +85,9 @@ def generate_skymap_plot(df: pd.DataFrame, ax) -> None:
         ax=ax,
     )
 
-    label = df.NAME[0]
+    label = df.NAME.values[0]
+
+    logger.debug(f"Target name {label}")
 
     # xy = df.g_lat.values[0], df.g_long.values[0]
     # coord = [int(v) for v in ax.transData.transform(xy)]
@@ -129,7 +131,10 @@ def generate_pdot_skymap_plots(
     generate_pdot_plot(df, pdot_ax, include_well_known_pulsars)
 
     logger.info(f"Generating skymap plot...")
+
     generate_skymap_plot(df, sky_ax)
+
+    logger.info("Plots generated")
 
     plt.gcf().set_size_inches(figsize)
     plt.savefig(path)

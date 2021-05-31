@@ -14,8 +14,8 @@ import typer
 
 from loguru import logger
 
-from .catalog import ATNFPulsarCatalog as PulsarCatalog
-from .plots import generate_pdot_skymap_plots
+from .catalogs import ATNFPulsarCatalog as PulsarCatalog
+
 
 cli = typer.Typer()
 
@@ -144,8 +144,18 @@ def tweet_subcommand(
         "-t",
         help="Path where tweet text and plots are written.",
     ),
+    animated: bool = typer.Option(
+        False,
+        "--animate-plot",
+        "-a",
+        is_flag=True,
+        help="Animate plots with approximate pulsar period.",
+    ),
 ):
     """Tweet a pulsar record and accompanying plot."""
+
+    if dryrun:
+        logger.info(f"DRY RUN")
 
     tweets_path = Path(tweet_archive_path or app_config_path / "tweets").resolve()
 
@@ -153,25 +163,21 @@ def tweet_subcommand(
 
     today = datetime.now().isoformat().partition("T")[0]
 
-    sample = catalog.random_pulsar_population(include_name=pulsar_name)
+    tweet_plot = tweets_path / f"{today}.png"
 
-    sample = sample.dropna(subset=["g_lat", "g_long"])
+    pulsar = catalog.plot_random_population(
+        tweet_plot,
+        include_name=pulsar_name,
+        animated=animated,
+    )
 
-    logger.info(f"Pulsars matching tweeting critera: {len(sample)}")
+    logger.debug(f"Target pulsar: {pulsar.NAME}")
 
-    # The first row in the dataframe is the target
-    # which will be plotted in red.
-
-    pulsar = sample.head(1)
-
-    sample.loc[pulsar.index, "color"] = "red"
-
-    if dryrun:
-        logger.info(f"DRY RUN for {sample.NAME.values[0]}")
+    logger.success(f"Tweet plot written to {tweet_plot}")
 
     tweet_path = tweets_path / f"{today}.text"
 
-    tweet = list(catalog.tweet(pulsar))[0]
+    tweet = catalog.tweet_text(pulsar.NAME)
 
     for line in tweet.splitlines():
         logger.log("PULSAR", line)
@@ -184,16 +190,7 @@ def tweet_subcommand(
 
     logger.success(f"Tweet text written to {tweet_path}")
 
-    tweet_plot = (tweets_path / f"{today}.png").resolve()
-
-    generate_pdot_skymap_plots(sample, tweet_plot)
-
-    logger.success(f"Tweet plot written to {tweet_plot}")
-
     if dryrun:
-        sample.loc[0, "tweeted"] = today
-        catalog.save()
-        logger.info(f"Catalog updated @ {catalog.csv_path}")
         logger.info("DRY RUN COMPLETE, nothing tweeted.")
         return
 
@@ -251,6 +248,7 @@ def tweet_subcommand(
         raise typer.Exit()
 
     # update the catalog with the date this pulsar was tweeted
+
     sample.loc[0, "tweeted"] = today
     catalog.save()
     logger.debug(f"Catalog updated @ {catalog.csv_path}")

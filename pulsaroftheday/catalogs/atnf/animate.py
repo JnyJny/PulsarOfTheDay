@@ -10,13 +10,14 @@ from loguru import logger
 from PIL import Image, ImageDraw, ImageFont
 
 
+MIN_FRAME_DURATION = 0.02
+
+
 def add_pulsar(
     filename: Union[str, Path],
     period: float,
-    origins: List[Tuple[int, int]] = None,
-    color: Tuple[int, int, int] = None,
+    origins: List[Tuple[int, int]],
     size: Tuple[int, int] = None,
-    nframes: int = 9,
 ) -> None:
 
     try:
@@ -30,27 +31,25 @@ def add_pulsar(
     w = size[0] // 2
     h = size[1] // 2
 
-    origins = origins or [
-        [src.width // 4 - w, src.height // 2 - w],
-        [int(src.width * 0.75) - w, src.height // 2 - w],
-    ]
-
+    # remap Y from matplotlib coords to PIL coords and offset
+    # by half the width and height of the drawn object (ellipse)
     origins = [[x - w, src.height - y - h] for x, y in origins]
 
     logger.debug(f"Origins: {origins}")
 
-    color = color or (255, 0, 0)
+    nframes = int((period / MIN_FRAME_DURATION) / 4)
+    duration = MIN_FRAME_DURATION
 
-    duration = period / nframes
+    if nframes <= 1:
+        nframes = 2
 
     logger.debug(f"period {period} nframes {nframes} duration={duration}")
 
-    # XXX the longer the duration the more frames needed for a smooth
-    #     transition
-
-    alphas = np.linspace(0, 255, int(nframes / 2) + 1, dtype=int).tolist()
-
-    alphas.extend(reversed(alphas[:-1]))
+    if nframes == 2:
+        alphas = [0, 255]
+    else:
+        alphas = np.linspace(0, 255, int(nframes / 2) + 1, dtype=int).tolist()
+        alphas.extend(reversed(alphas[:-1]))
 
     try:
         font = ImageFont.truetype("Courier New.ttf", 72)
@@ -71,7 +70,9 @@ def add_pulsar(
         for origin in origins:
             frames[-1].alpha_composite(pulsar, dest=tuple(origin))
 
-    logger.debug(f"Number of frames: {len(frames)}")
+    logger.debug(f"Number of frames: {len(frames)} {duration} {len(frames)*duration}")
+
+    # filename = filename.parent / (filename.stem + ".gif")
 
     frames[0].save(
         filename,

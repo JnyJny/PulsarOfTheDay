@@ -14,7 +14,8 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord
 from loguru import logger
 
-from .telescope import Telescope
+from ..telescope import Telescope
+from .plots import generate_pdot_skymap_plots
 
 
 def fix_angle(text: str, dms: bool = True) -> str:
@@ -49,7 +50,7 @@ def galactic_coords(ra: str, dec: str) -> Tuple[float, float]:
     return (g_lat, g_long)
 
 
-class ATNFPulsarCatalog:
+class PulsarCatalog:
     """A pandas DataFrame loader for ATNF Pulsar Catalogue v1.64 data.
 
     Source Data:
@@ -139,14 +140,21 @@ class ATNFPulsarCatalog:
             2 * self._dataframe.pdot
         )
 
-        self._dataframe["b_s"] = (
-            1e12
-            * np.sqrt(self._dataframe.pdot / 1e-15)
-            * np.sqrt(self._dataframe.period / u.s)
-            * u.G
-        )
+        # np.seterr(all="raise")
+        try:
+            self._dataframe["b_s"] = (
+                1e12
+                * np.sqrt(self._dataframe.pdot / 1e-15)
+                * np.sqrt(self._dataframe.period / u.s)
+                * u.G
+            )
+        except Exception as error:
+            logger.debug(f"B_S {error}")
+
+        # np.seterr(all="ignore")
 
         self._dataframe["color"] = "lightblue"
+        self._dataframe["tweeted"] = np.NaN
 
         self._dataframe.index.rename("INDEX", inplace=True)
 
@@ -167,16 +175,16 @@ class ATNFPulsarCatalog:
         )
 
     @property
-    def default_catalog(self) -> Path:
+    def default_catalog_path(self) -> Path:
         """Default path for ATFN Pulsar Catalogue v1.64 data."""
 
         try:
-            return self._default_catalog
+            return self._default_catalog_path
         except AttributeError:
             pass
-        with ir.path("pulsaroftheday.catalog.data", "psrcat.db") as db:
-            self._default_catalog = db
-        return self._default_catalog
+        with ir.path("pulsaroftheday.catalogs.atnf.data", "psrcat.db") as db:
+            self._default_catalog_path = db
+        return self._default_catalog_path
 
     @property
     def wikipedia(self) -> wiki.Wikipedia:
@@ -192,27 +200,26 @@ class ATNFPulsarCatalog:
 
     def initialize(self, force: bool = False) -> None:
 
-        if force:
+        if not force:
+            logger.info("Initialize: no action taken when force=False")
+            logger.info("Actions that would be taken:")
+            logger.info(f"- unlink {self.csv_path}")
+            logger.info(f"- delete the existing dataframe from memory.")
+            logger.info(f"- re-read data from {self.default_catalog_path}")
+        else:
             logger.info("Beginning catalog initialization")
             self.csv_path.unlink(missing_ok=True)
             logger.success(f"Unlinked {self.csv_path}")
             del self._dataframe
             logger.success("Removed existing dataframe")
             self.dataframe
-            logger.success(f"Dataframe read from {self.default_catalog}")
+            logger.success(f"Dataframe read from {self.default_catalog_path}")
             if self.dataframe.empty:
                 logger.error("Re-initialized dataframe is empty!")
                 raise Exception("Need a better empty catalog exception")
             logger.success(f"Reloaded {len(self.dataframe)} pulsars")
             self.save()
             logger.success(f"Wrote cached CSV database to {self.csv_path}")
-            return
-
-        logger.info("Initialize: no action taken when force=False")
-        logger.info("Actions that would be taken:")
-        logger.info(f"- unlink {self.csv_path}")
-        logger.info(f"- delete the existing dataframe from memory.")
-        logger.info(f"- re-read data from {self.default_catalog}")
 
     def load_psrcat(
         self, psrcat_path: Union[str, Path] = None
@@ -225,9 +232,9 @@ class ATNFPulsarCatalog:
         """
         pulsars = {}
 
-        psrcat_path = Path(psrcat_path or self.default_catalog)
+        psrcat_path = Path(psrcat_path or self.default_catalog_path)
 
-        logger.debug(f"psrcat {psrcat_path}")
+        logger.debug(f" {psrcat_path} {psrcat_path.exists()}")
 
         with psrcat_path.open() as db:
             record = []
@@ -283,7 +290,7 @@ class ATNFPulsarCatalog:
         If `include_name` is given and found in the dataframe, the
         record for that pulsar is inserted at the top of the dataframe.
 
-        If `required_keys` are given the catalog dataframe is plottableed
+        If `required_keys` are given the catalog dataframe is narrowed
         to just those keys.
 
         :param pop_count: int
@@ -309,18 +316,66 @@ class ATNFPulsarCatalog:
 
         return sample
 
-    def by_name(
+    def plot_random_population(
         self,
-        name: str,
-        regex: bool = False,
-    ) -> pd.DataFrame:
-        """Returns a DataFrame with records that match `name`.
+        path: Union[str, Path],
+        pop_count: int = 0,
+        include_name: str = None,
+        target_color: str = "red",
+        animated: bool = True,
+    ) -> Tuple:
 
-        :param name: str
-        :param regex: optional bool
-        :return: pandas.DataFrame
-        """
-        return self.dataframe[self.dataframe.CNAME.str.contains(name, regex=regex)]
+        sample = self.random_pulsar_population(pop_count, include_name)
+
+        sample.loc[sample.head(1).index[0], "color"] = "red"
+
+        generate_pdot_skymap_plots(sample, path)
+
+        return [t for t in sample.head(1).itertuples(name="Pulsar")][0]
+
+    def tweet_text(self, pulsar_name: str) -> str:
+        """"""
+        df = self.tweetable
+
+        logger.debug(f"{pulsar_name} in  {len(df)} records?")
+
+        match = df[df.CNAME.str.contains(pulsar_name, regex=False)]
+
+        logger.info(f"Matched {len(match)} records for {pulsar_name}")
+
+        if match.empty or len(match) > 1:
+            raise Exception(f"No match for {pulsar_name}")
+
+        df = match[self.tweetable_keys]
+
+        for p in df.itertuples():
+
+            lines = [
+                f"Pulsar: {p.NAME}",
+                f"RA: {p.RAJ}",
+                f"Dec: {p.DECJ}",
+                f"Period: {round(p.period, 3)} s",
+                f"Pdot: {p.pdot:.3e}",
+                f"DM: {p.DM} pc/cm^3",
+                f"Characteristic Age: {p.char_age:.3e} yr",
+                f"Surface Magnetic Field: {p.b_s:.3e} G",
+            ]
+
+            for key in ["PSRJ", "PSRB"]:
+                try:
+                    name = getattr(p, key)
+                    page = self.wikipedia.page(f"PSR_{name}")
+                except (KeyError, AttributeError):
+                    continue
+                if page.exists():
+                    lines.append(f"Wikipedia URL: {page.canonicalurl}")
+                    break
+
+            visible_to = Telescope.observable_from(p.DECJ)
+            if visible_to:
+                lines.append(f"Visible from {', '.join(visible_to)}")
+
+            return "\n".join(lines)
 
     def tweet(self, df: pd.DataFrame) -> Generator[str, None, None]:
 
