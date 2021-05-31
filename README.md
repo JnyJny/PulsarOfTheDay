@@ -152,4 +152,4 @@ $ potd -vvv twitter -n -a
 
 [0]: https://twitter.com/PulsarOfTheDay
 [1]: https://www.atnf.csiro.au/research/pulsar/psrcat/
-[PLOT]: https://github.com/JnyJny/PulsarOfTheDay/blob/master/example/example.png
+[PLOT]: https://github.com/JnyJny/PulsarOfTheDay/blob/main/example/example.png
