@@ -81,6 +81,9 @@ Options:
   -n, --dry-run                  Do everything but tweet.  [default: False]
   -p, --pulsar TEXT              Specific pulsar name to tweet.
   -t, --tweet-archive-path PATH  Path where tweet text and plots are written.
+  -a, --animate-plot             Animate plots with approximate pulsar period.
+                                 [default: False]
+
   --help                         Show this message and exit.
 ```
 
