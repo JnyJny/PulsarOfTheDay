@@ -24,6 +24,25 @@ catalog = None
 app_config_path = Path(typer.get_app_dir("PulsarOfTheDay"))
 app_config_path.mkdir(parents=True, exist_ok=True)
 
+logger.level("PULSAR", no=38, color="<blue>", icon="✪")
+
+
+def set_logging_level(level: int) -> None:
+
+    logger.remove()
+
+    logger_config = {
+        "colorize": True,
+        "format": "<green>{time}</green>|<level>{level:<8}</level>|{message}",
+        "level": {
+            0: "ERROR",
+            1: "SUCCESS",
+            2: "INFO",
+            3: "DEBUG",
+        }.get(level, "DEBUG"),
+    }
+    logger.add(sys.stdout, **logger_config)
+
 
 @cli.callback()
 def main_command(
@@ -39,19 +58,7 @@ def main_command(
 
     global catalog
 
-    logger.remove()
-    if verbose:
-        logger_config = {
-            "colorize": True,
-            "format": "<green>{time}</green>|<level>{level:<8}</level>|{message}",
-            "level": {
-                1: "SUCCESS",
-                2: "INFO",
-                3: "DEBUG",
-            }.get(verbose, "INFO"),
-        }
-        logger.add(sys.stdout, **logger_config)
-        logger.level("PULSAR", no=38, color="<blue>", icon="✪")
+    set_logging_level(verbose)
 
     try:
         csv_path = (Path(path or app_config_path) / "pulsars.csv").resolve()
@@ -86,6 +93,8 @@ def init_subcommand(
     ),
 ) -> None:
     """Initialize the CSV database from the source database file."""
+
+    set_logging_level(2)
 
     catalog.initialize(force=force)
 
