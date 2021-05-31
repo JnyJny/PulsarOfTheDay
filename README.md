@@ -102,15 +102,15 @@ $ poetry shell
 
 ### Twitter Status Text
 ```
-Pulsar: J1901+0124
-RA: 19:01:52.545
-Dec: +01:24:49.3
-Period: 0.319 s
-Pdot: 3.241e-15
-DM: 314.4 pc/cm^3
-Characteristic Age: 4.918e+13 yr
-Surface Magnetic Field: 1.017e+12 G
-Visible from Arecibo, CHIME, FAST, GBT, VLA
+Pulsar: J1743-3153
+RA: 17:43:15.565
+Dec: -31:53:05.3
+Period: 0.193 s
+Pdot: 1.057e-14
+DM: 505.7 pc/cm^3
+Characteristic Age: 9.137e+12 yr
+Surface Magnetic Field: 1.429e+12 G
+Visible from GBT, VLA
 ```
 
 ### Command Output with verbosity turned up.
