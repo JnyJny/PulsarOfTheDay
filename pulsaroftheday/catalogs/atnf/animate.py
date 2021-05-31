@@ -26,14 +26,14 @@ def add_pulsar(
         logger.error(f"{error} Unable to add pulsar animation to {filename}")
         raise
 
-    size = size or (20, 20)
+    size = size or (15, 15)
 
     w = size[0] // 2
     h = size[1] // 2
 
     # remap Y from matplotlib coords to PIL coords and offset
     # by half the width and height of the drawn object (ellipse)
-    origins = [[x - w, src.height - y - h] for x, y in origins]
+    origins = [(x - w, (src.height - y) - h) for x, y in origins]
 
     logger.debug(f"Origins: {origins}")
 
@@ -51,12 +51,6 @@ def add_pulsar(
         alphas = np.linspace(0, 255, int(nframes / 2) + 1, dtype=int).tolist()
         alphas.extend(reversed(alphas[:-1]))
 
-    try:
-        font = ImageFont.truetype("Courier New.ttf", 72)
-    except OSError as error:
-        logger.debug(f"{error}")
-        font = ImageFont.load_default()
-
     pulsar = Image.new("RGBA", size, (0, 0, 0, 0))
 
     draw = ImageDraw.Draw(pulsar)
@@ -65,14 +59,10 @@ def add_pulsar(
     for fnum, alpha in enumerate(alphas):
         frames.append(Image.new("RGBA", src.size, (0, 0, 0, 255)))
         frames[-1].alpha_composite(src)
-        c = (alpha, 0, 0, alpha)
-        draw.ellipse(bbox, fill=c)  # , width=1, outline=(0, 0, 0, 255))
+        c = (alpha, 255 - alpha, 255 - alpha, alpha)
+        draw.ellipse(bbox, fill=c)
         for origin in origins:
-            frames[-1].alpha_composite(pulsar, dest=tuple(origin))
-
-    logger.debug(f"Number of frames: {len(frames)} {duration} {len(frames)*duration}")
-
-    # filename = filename.parent / (filename.stem + ".gif")
+            frames[-1].alpha_composite(pulsar, dest=origin)
 
     frames[0].save(
         filename,
