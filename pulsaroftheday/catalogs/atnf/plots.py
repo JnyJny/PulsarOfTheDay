@@ -139,9 +139,10 @@ def generate_pdot_skymap_plots(
     plt.gcf().set_size_inches(figsize)
     plt.savefig(path)
 
-    pdot_xy = df[["period", "pdot"]].values[0].tolist()
     coords = []
-    coords.append([int(v) for v in pdot_ax.transData.transform(pdot_xy)])
+
+    # pdot_xy = df[["period", "pdot"]].values[0].tolist()
+    # coords.append([int(v) for v in pdot_ax.transData.transform(pdot_xy)])
 
     gall_xy = df[["g_lat", "g_long"]].values[0].tolist()
     coords.append([int(v) for v in sky_ax.transData.transform(gall_xy)])
