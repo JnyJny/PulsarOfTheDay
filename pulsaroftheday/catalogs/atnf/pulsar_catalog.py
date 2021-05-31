@@ -329,7 +329,7 @@ class PulsarCatalog:
 
         sample.loc[sample.head(1).index[0], "color"] = "red"
 
-        generate_pdot_skymap_plots(sample, path)
+        generate_pdot_skymap_plots(sample, path, animated=animated)
 
         return [t for t in sample.head(1).itertuples(name="Pulsar")][0]
 
