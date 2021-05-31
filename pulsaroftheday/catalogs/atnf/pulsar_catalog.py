@@ -142,9 +142,7 @@ class PulsarCatalog:
         )
 
         with warnings.catch_warnings():
-            # The sqrts are generating RuntimeWarnings that we suppress.
-            # My guess is it's a sub-epsilon problem but my research has
-            # been inconclusive.
+            warnings.simplefilter("ignore")
             self._dataframe["b_s"] = (
                 1e12
                 * np.sqrt(self._dataframe.pdot / 1e-15)
