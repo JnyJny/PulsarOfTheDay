@@ -118,7 +118,7 @@ Visible from GBT, VLA
 
 ### Command Output with verbosity turned up.
 ```console
-$ potd -vvv twitter -n -a
+$ potd -vvv twitter -n -a -p J1743-3153
 2021-05-31T16:35:48.297670-0500|INFO    |Config path: /Users/ejo/Library/Application Support/PulsarOfTheDay
 2021-05-31T16:35:48.327344-0500|SUCCESS |Pulsars in catalog: 2872
 2021-05-31T16:35:48.332917-0500|SUCCESS |Tweet-able pulsars: 1133
