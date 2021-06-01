@@ -258,7 +258,8 @@ def tweet_subcommand(
 
     # update the catalog with the date this pulsar was tweeted
 
-    sample.loc[0, "tweeted"] = today
+    catalog.mark_tweeted(pulsar.NAME, today)
+
     catalog.save()
     logger.debug(f"Catalog updated @ {catalog.csv_path}")
 
