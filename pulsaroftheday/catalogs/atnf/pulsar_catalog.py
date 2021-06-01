@@ -413,7 +413,7 @@ class PulsarCatalog:
     def mark_tweeted(self, pulsar_name: str, marker: str) -> None:
 
         match = self.dataframe[
-            selfdataframe.CNAME.str.contains(pulsar.name, regex=True)
+            self.dataframe.CNAME.str.contains(pulsar.name, regex=True)
         ]
 
         if not match.empty:

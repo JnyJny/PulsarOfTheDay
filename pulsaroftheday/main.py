@@ -251,7 +251,7 @@ def tweet_subcommand(
     logger.info(f"Tweeting {pulsar.NAME} and {tweet_plot.name}")
 
     try:
-        tweeter.update_with_media(filename=tweet_plot, status=pulsar.tweet)
+        tweeter.update_with_media(filename=tweet_plot, status=tweet)
     except Exception as error:
         logger.error(f"update_with_media failed: {error}")
         raise typer.Exit()
