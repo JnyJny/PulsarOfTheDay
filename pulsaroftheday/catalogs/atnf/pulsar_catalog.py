@@ -143,6 +143,8 @@ class PulsarCatalog:
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
+            # there are 20 records where pdot is negative, causing
+            # a RuntimeWarning to be displayed.
             self._dataframe["b_s"] = (
                 1e12
                 * np.sqrt(self._dataframe.pdot / 1e-15)
@@ -159,7 +161,7 @@ class PulsarCatalog:
 
     @property
     def tweetable(self) -> pd.DataFrame:
-        """A pandas.DataFrame containing a subset of Pulsars with valid data.
+        """A pandas.DataFrame containing a subset of Pulsars with valid data and have not yet been marked "tweeted".
 
         Valid entries (not NaN) for these keys:
         - NAME, period, pdot, g_lat, g_long
@@ -167,9 +169,12 @@ class PulsarCatalog:
 
         The dataframe will retain all the columns.
         """
-        return self.dataframe.dropna(
-            subset=["NAME", "period", "pdot", "g_lat", "g_long"]
-        )
+
+        keys = ["NAME", "period", "pdot", "g_lat", "g_long"]
+
+        df = self.dataframe.dropna(subset=keys)
+
+        return df[df.tweeted.isna()]
 
     @property
     def default_catalog_path(self) -> Path:
@@ -404,6 +409,16 @@ class PulsarCatalog:
                 lines.append(f"Visible from {', '.join(visible_to)}")
 
             yield "\n".join(lines)
+
+    def mark_tweeted(self, pulsar_name: str, marker: str) -> None:
+
+        match = self.dataframe[
+            selfdataframe.CNAME.str.contains(pulsar.name, regex=True)
+        ]
+
+        if not match.empty:
+            logger.info(f"Marking {pulsar_name} as tweeted {marker}")
+            match.loc[match.index.values[0], "tweeted"] = marker
 
     def save(self):
         """"""
